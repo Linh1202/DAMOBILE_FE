@@ -1,0 +1,49 @@
+# See https://www.dartlang.org/guides/libraries/private-files
+
+# ===== Dart / Flutter =====
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# If you're building an application, you may want to check-in your pubspec.lock
+pubspec.lock
+
+# Dartdoc
+doc/api/
+
+# Env
+.env*
+*.log
+
+# ===== Web (dart2js) =====
+*.dart.js
+*.info.json
+*.js
+*.js_
+*.js.deps
+*.js.map
+
+# ===== Android =====
+android/.gradle/
+android/local.properties
+android/app/build/
+android/app/*.keystore
+
+# APK / AAB
+*.apk
+*.aab
+
+# Flutter engine (file cực nặng gây lỗi GitHub)
+**/libflutter.so
+
+# ===== iOS =====
+ios/Pods/
+ios/Runner.xcworkspace/
+
+# ===== IDE / OS =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
