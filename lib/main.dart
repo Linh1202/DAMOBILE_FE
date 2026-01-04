@@ -5,6 +5,7 @@ import 'package:doanmobile/Views/Authentication/ForgotPasswordView.dart';
 import 'package:doanmobile/Views/Authentication/VerifyCodeView.dart';
 import 'package:doanmobile/Views/Authentication/ResetPasswordView.dart';
 import 'package:doanmobile/Views/Authentication/SuccessView.dart';
+import 'package:doanmobile/Views/Main/HomeView.dart';
 import 'Utils/AppGlobals.dart';
 import 'package:flutter/material.dart';
 
@@ -22,6 +23,7 @@ void main() {
       '/verify-code': (context) => VerifyCodeView(),
       '/reset-password': (context) => ResetPasswordView(),
       '/success': (context) => SuccessView(),
+      '/home': (context) => HomeView(),
     },
   ));
 }

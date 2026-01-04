@@ -9,6 +9,10 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final VoidCallback? onSuffixIconTap;
   final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+  final AutovalidateMode autovalidateMode;
+  final TextInputAction? textInputAction;
+  final void Function(String)? onFieldSubmitted;
 
   const CustomTextField({
     Key? key,
@@ -19,14 +23,22 @@ class CustomTextField extends StatelessWidget {
     this.obscureText = false,
     this.onSuffixIconTap,
     this.keyboardType = TextInputType.text,
+    this.validator,
+    this.autovalidateMode = AutovalidateMode.disabled,
+    this.textInputAction,
+    this.onFieldSubmitted,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      validator: validator,
+      autovalidateMode: autovalidateMode,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onFieldSubmitted,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(color: AppColors.iconGrey, fontSize: 14),

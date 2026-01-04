@@ -49,4 +49,6 @@ class AppStrings {
   static const String needHelp = "Cần trợ giúp? ";
   static const String contactSupport = "Liên hệ hỗ trợ";
   static const String termsAndPolicy = "Điều khoản & Chính sách";
+
+  static const String baseUrl = "https://damobilebe-production.up.railway.app/api";
 }

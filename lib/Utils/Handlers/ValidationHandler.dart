@@ -47,4 +47,11 @@ class ValidationHandler {
     if (!isPasswordMatch(password, confirmPassword)) return "Mật khẩu không khớp";
     return null;
   }
+
+  /// Trả về thông báo lỗi cho họ tên
+  static String? getNameError(String name) {
+    if (name.trim().isEmpty) return "Vui lòng nhập họ và tên";
+    if (!isValidName(name)) return "Họ và tên phải có ít nhất 2 ký tự";
+    return null;
+  }
 }
