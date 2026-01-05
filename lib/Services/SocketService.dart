@@ -19,31 +19,39 @@ class SocketService {
       StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get messageStream => _messageController.stream;
 
-  String get _wsUrl {
+  Future<String> _getWsUrl() async {
     String base = AppStrings.baseUrl
         .replaceFirst('http', 'ws')
         .replaceFirst('/api', '/ws');
 
     if (Platform.isAndroid) {
-      if (base.contains('localhost'))
-        return base.replaceFirst('localhost', '10.0.2.2');
-      if (base.contains('127.0.0.1'))
-        return base.replaceFirst('127.0.0.1', '10.0.2.2');
+      if (base.contains('localhost')) {
+        base = base.replaceFirst('localhost', '10.0.2.2');
+      }
+      if (base.contains('127.0.0.1')) {
+        base = base.replaceFirst('127.0.0.1', '10.0.2.2');
+      }
+    }
+
+    final token = await AuthStorage.readToken();
+    if (token != null && token.isNotEmpty) {
+      return "$base?token=$token";
     }
     return base;
   }
 
   Future<void> connect() async {
     if (_isConnected) return;
+    final url = await _getWsUrl();
     var headers = await AuthStorage.authHeaders();
 
     try {
       _channel = IOWebSocketChannel.connect(
-        Uri.parse(_wsUrl),
+        Uri.parse(url),
         headers: headers,
       );
       _isConnected = true;
-      print("WebSocket Connected to $_wsUrl");
+      print("WebSocket Connected to $_getWsUrl");
 
       _channel!.stream.listen(
         (message) {
@@ -91,7 +99,10 @@ class SocketService {
     final message = {
       "type": MessageType.directCall.value,
       "room_id": targetUserId,
-      "payload": {"type": type.value, "payload": payload},
+      "payload": {
+        "type": type.value,
+        if (payload != null) "payload": payload,
+      },
     };
     sendMessage(message);
   }
@@ -108,7 +119,10 @@ class SocketService {
     final message = {
       "type": MessageType.call.value,
       "room_id": roomId,
-      "payload": {"type": type.value, "payload": payload},
+      "payload": {
+        "type": type.value,
+        if (payload != null) "payload": payload,
+      },
     };
     sendMessage(message);
   }

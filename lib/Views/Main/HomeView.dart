@@ -29,23 +29,35 @@ class _HomeViewState extends State<HomeView> {
     SocketService.instance.messageStream.listen((data) {
       final msgType = MessageType.fromString(data['type'] ?? "");
 
-      if (msgType == MessageType.directCall) {
+      if (msgType == MessageType.directCall || msgType == MessageType.call) {
         final senderId = data['sender_id']?.toString();
+        final senderName = data['sender_name']?.toString();
+        final roomId = data['room_id']?.toString();
         final payload = data['payload'];
         if (payload == null || senderId == null) return;
 
         final sigType = SignalingType.fromString(payload['type'] ?? "");
         final innerPayload = payload['payload'];
+        final isRoom = msgType == MessageType.call;
 
         switch (sigType) {
           case SignalingType.offer:
-            _handleIncomingCall(senderId, innerPayload);
+            _handleIncomingCall(
+              senderId: senderId,
+              senderName: senderName,
+              sdp: innerPayload,
+              isRoom: isRoom,
+              roomId: roomId,
+            );
             break;
           case SignalingType.answer:
             WebRTCService.instance.handleAnswer(innerPayload);
             break;
           case SignalingType.iceCandidate:
             WebRTCService.instance.handleIceCandidate(innerPayload);
+            break;
+          case SignalingType.end:
+            WebRTCService.instance.endCall();
             break;
           default:
             break;
@@ -54,13 +66,22 @@ class _HomeViewState extends State<HomeView> {
     });
   }
 
-  void _handleIncomingCall(String senderId, Map<String, dynamic> sdp) {
+  void _handleIncomingCall({
+    required String senderId,
+    String? senderName,
+    required Map<String, dynamic> sdp,
+    bool isRoom = false,
+    String? roomId,
+  }) {
+    final displayName = senderName ?? senderId;
+    final callType = isRoom ? "Cuộc gọi nhóm" : "Cuộc gọi đến";
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Cuộc gọi đến"),
-        content: Text("Người dùng $senderId đang gọi cho bạn"),
+        title: Text(callType),
+        content: Text("$displayName đang gọi cho bạn"),
         actions: [
           TextButton(
             onPressed: () {
@@ -77,13 +98,19 @@ class _HomeViewState extends State<HomeView> {
                 MaterialPageRoute(
                   builder: (context) => CallView(
                     targetUserId: senderId,
+                    userName: senderName,
                     isIncoming: true,
                   ),
                 ),
               );
 
               Future.delayed(const Duration(milliseconds: 500), () {
-                WebRTCService.instance.handleOffer(senderId, sdp);
+                WebRTCService.instance.handleOffer(
+                  senderId,
+                  sdp,
+                  isRoom: isRoom,
+                  roomId: roomId,
+                );
               });
             },
             child: const Text("Chấp nhận"),

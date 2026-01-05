@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../Services/WebRTCService.dart';
-import '../../Services/SocketService.dart';
 
 class CallView extends StatefulWidget {
   final String? targetUserId;
+  final String? userName;
   final bool isIncoming;
 
   const CallView({
     Key? key,
     this.targetUserId,
+    this.userName,
     this.isIncoming = false,
   }) : super(key: key);
 
@@ -48,22 +49,22 @@ class _CallViewState extends State<CallView> {
       });
     };
 
+    WebRTCService.instance.onCallEnd = () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    };
+
     if (!widget.isIncoming && widget.targetUserId != null) {
       await WebRTCService.instance.startDirectCall(widget.targetUserId!);
     }
-
-    SocketService.instance.messageStream.listen((data) {
-      if (data['type'] == 'DIRECT_CALL') {
-        final payload = data['payload'];
-        if (payload['type'] == 'end') {
-          _hangUp();
-        }
-      }
-    });
   }
 
   @override
   void dispose() {
+    WebRTCService.instance.onLocalStream = null;
+    WebRTCService.instance.onRemoteStream = null;
+    WebRTCService.instance.onCallEnd = null;
     _localRenderer.dispose();
     _remoteRenderer.dispose();
     super.dispose();
@@ -71,9 +72,6 @@ class _CallViewState extends State<CallView> {
 
   void _hangUp() async {
     await WebRTCService.instance.endCall(widget.targetUserId);
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
   }
 
   void _toggleMic() {
@@ -139,7 +137,7 @@ class _CallViewState extends State<CallView> {
                   style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 Text(
-                  widget.targetUserId ?? "Người dùng",
+                  widget.userName ?? widget.targetUserId ?? "Người dùng",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,

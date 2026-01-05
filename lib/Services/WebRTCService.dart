@@ -11,6 +11,10 @@ class WebRTCService {
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
 
+  String? _currentTargetId;
+  String? _currentRoomId;
+  bool _isRoomCall = false;
+
   final Map<String, dynamic> _configuration = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
@@ -24,16 +28,16 @@ class WebRTCService {
   Function(MediaStream stream)? onRemoteStream;
   Function(RTCSignalingState state)? onSignalingStateChange;
   Function(RTCPeerConnectionState state)? onConnectionStateChange;
+  Function()? onCallEnd;
 
-  Future<void> _initPeerConnection(String targetUserId) async {
+  Future<void> _initPeerConnection() async {
     if (_peerConnection != null) return;
 
     try {
       _peerConnection = await createPeerConnection(_configuration);
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        SocketService.instance.sendDirectCall(
-          targetUserId: targetUserId,
+        _sendSignalingMessage(
           type: SignalingType.iceCandidate,
           payload: {
             'candidate': candidate.candidate,
@@ -61,6 +65,32 @@ class WebRTCService {
     }
   }
 
+  void _sendSignalingMessage({
+    required SignalingType type,
+    dynamic payload,
+    String? overrideTargetId,
+    String? overrideRoomId,
+    bool? overrideIsRoom,
+  }) {
+    final isRoom = overrideIsRoom ?? _isRoomCall;
+    final roomId = overrideRoomId ?? _currentRoomId;
+    final targetId = overrideTargetId ?? _currentTargetId;
+
+    if (isRoom && roomId != null) {
+      SocketService.instance.sendRoomCall(
+        roomId: roomId,
+        type: type,
+        payload: payload,
+      );
+    } else if (targetId != null) {
+      SocketService.instance.sendDirectCall(
+        targetUserId: targetId,
+        type: type,
+        payload: payload,
+      );
+    }
+  }
+
   Future<void> _setupLocalMedia() async {
     if (_localStream != null) return;
 
@@ -84,29 +114,66 @@ class WebRTCService {
 
   Future<void> startDirectCall(String targetUserId) async {
     try {
-      await _initPeerConnection(targetUserId);
+      _isRoomCall = false;
+      _currentTargetId = targetUserId;
+      _currentRoomId = null;
+
+      await _initPeerConnection();
       await _setupLocalMedia();
 
       RTCSessionDescription offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
 
-      SocketService.instance.sendDirectCall(
-        targetUserId: targetUserId,
+      _sendSignalingMessage(
         type: SignalingType.offer,
         payload: {'sdp': offer.sdp, 'type': offer.type},
       );
     } catch (e) {
       print("Error starting direct call: $e");
-      await endCall(targetUserId);
+      await endCall();
+    }
+  }
+
+  Future<void> startRoomCall(String roomId) async {
+    try {
+      _isRoomCall = true;
+      _currentRoomId = roomId;
+      _currentTargetId = null;
+
+      SocketService.instance.joinRoom(roomId);
+
+      await _initPeerConnection();
+      await _setupLocalMedia();
+
+      RTCSessionDescription offer = await _peerConnection!.createOffer();
+      await _peerConnection!.setLocalDescription(offer);
+
+      _sendSignalingMessage(
+        type: SignalingType.offer,
+        payload: {'sdp': offer.sdp, 'type': offer.type},
+      );
+    } catch (e) {
+      print("Error starting room call: $e");
+      await endCall();
     }
   }
 
   Future<void> handleOffer(
     String senderId,
-    Map<String, dynamic> sdpData,
-  ) async {
+    Map<String, dynamic> sdpData, {
+    bool isRoom = false,
+    String? roomId,
+  }) async {
     try {
-      await _initPeerConnection(senderId);
+      _isRoomCall = isRoom;
+      _currentTargetId = senderId;
+      _currentRoomId = roomId;
+
+      if (isRoom && roomId != null) {
+        SocketService.instance.joinRoom(roomId);
+      }
+
+      await _initPeerConnection();
       await _setupLocalMedia();
 
       await _peerConnection!.setRemoteDescription(
@@ -116,14 +183,13 @@ class WebRTCService {
       RTCSessionDescription answer = await _peerConnection!.createAnswer();
       await _peerConnection!.setLocalDescription(answer);
 
-      SocketService.instance.sendDirectCall(
-        targetUserId: senderId,
+      _sendSignalingMessage(
         type: SignalingType.answer,
         payload: {'sdp': answer.sdp, 'type': answer.type},
       );
     } catch (e) {
       print("Error handling offer: $e");
-      await endCall(senderId);
+      await endCall();
     }
   }
 
@@ -153,13 +219,17 @@ class WebRTCService {
     }
   }
 
-  Future<void> endCall(String? targetUserId) async {
+  /// Ends the current call or rejects an incoming one if targetUserId is provided
+  Future<void> endCall([String? targetUserId]) async {
     try {
       if (targetUserId != null) {
-        SocketService.instance.sendDirectCall(
-          targetUserId: targetUserId,
+        _sendSignalingMessage(
           type: SignalingType.end,
+          overrideTargetId: targetUserId,
+          overrideIsRoom: false,
         );
+      } else {
+        _sendSignalingMessage(type: SignalingType.end);
       }
 
       _localStream?.getTracks().forEach((track) => track.stop());
@@ -169,9 +239,14 @@ class WebRTCService {
       await _peerConnection?.close();
       await _peerConnection?.dispose();
       _peerConnection = null;
+
+      _currentTargetId = null;
+      _currentRoomId = null;
+      _isRoomCall = false;
+
+      onCallEnd?.call();
     } catch (e) {
       print("Error ending call: $e");
-      rethrow;
     }
   }
 
