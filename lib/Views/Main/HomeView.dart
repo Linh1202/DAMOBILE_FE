@@ -31,13 +31,13 @@ class _HomeViewState extends State<HomeView> {
 
   void _listenForCalls() {
     SocketService.instance.messageStream.listen((data) {
-      final msgType = MessageType.fromString(data['type'] ?? "");
+      final msgType = data.type;
 
       if (msgType == MessageType.directCall || msgType == MessageType.call) {
-        final senderId = data['sender_id']?.toString();
-        final senderName = data['sender_name']?.toString();
-        final roomId = data['room_id']?.toString();
-        final payload = data['payload'];
+        final senderId = data.senderId;
+        final senderName = data.senderName;
+        final roomId = data.roomId;
+        final payload = data.payload;
         if (payload == null || senderId == null) return;
 
         final sigType = SignalingType.fromString(payload['type'] ?? "");
