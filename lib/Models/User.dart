@@ -3,12 +3,16 @@ class User {
   final String email;
   final String fullName;
   final String? avatarUrl;
+  final String? bio;
+  final String? phoneNumber;
 
   User({
     required this.id,
     required this.email,
     required this.fullName,
     this.avatarUrl,
+    this.bio,
+    this.phoneNumber,
   });
 
   factory User.fromJson(dynamic json) {
@@ -16,10 +20,12 @@ class User {
         ? json 
         : Map<String, dynamic>.from(json as Map);
     return User(
-      id: data['id']?.toString() ?? '',
+      id: data['id']?.toString() ?? data['_id']?.toString() ?? '',
       email: data['email']?.toString() ?? '',
       fullName: data['username'] ?? data['full_name'] ?? data['fullName'] ?? '',
       avatarUrl: data['avatar_url'] ?? data['avatarUrl'],
+      bio: data['bio'],
+      phoneNumber: data['phone_number'] ?? data['phoneNumber'] ?? data['phone_Number'],
     );
   }
 
@@ -29,6 +35,8 @@ class User {
       'email': email,
       'full_name': fullName,
       'avatar_url': avatarUrl,
+      'bio': bio,
+      'phone_number': phoneNumber,
     };
   }
 }

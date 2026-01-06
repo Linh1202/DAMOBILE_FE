@@ -161,6 +161,29 @@ class ApiService {
     }
   }
 
+  Future<dynamic> postMultipartWithAuth(String endpoint, String filePath, {String fieldName = 'file'}) async {
+    String url = '$_baseUrl$endpoint';
+    try {
+      final token = await AuthStorage.readToken();
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+      
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      
+      request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      return _processResponse(response);
+    } on SocketException catch (e) {
+      throw Exception("Không có kết nối internet: $e");
+    } catch (e) {
+      throw Exception("Lỗi: $e");
+    }
+  }
+
   dynamic _processResponse(http.Response response) {
     switch (response.statusCode) {
       case 200:
@@ -187,4 +210,3 @@ class ApiService {
     }
   }
 }
-

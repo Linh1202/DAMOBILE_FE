@@ -1,5 +1,5 @@
-import 'package:doanmobile/Base/BaseResponse.dart';
-import 'package:doanmobile/Models/Api/AuthResponse.dart';
+import '../../Models/Api/BaseResponse.dart';
+import '../../Models/Api/AuthResponse.dart';
 
 abstract interface class IAuthService {
   Future<BaseResponse<AuthResponse>> login(String email, String password);
@@ -8,6 +8,7 @@ abstract interface class IAuthService {
     required String email,
     required String password,
     required String fullName,
+    required String phoneNumber,
   });
 
   Future<BaseResponse<dynamic>> forgotPassword(String email);

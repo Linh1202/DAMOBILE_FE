@@ -1,4 +1,3 @@
-/// Model Message - Tin nhắn
 class Message {
   final String id;
   final String chatId;
@@ -9,7 +8,6 @@ class Message {
   final DateTime createdAt;
   final bool isEdited;
 
-  // Thông tin sender (nếu BE trả về populated)
   final String? senderName;
   final String? senderAvatarUrl;
 
@@ -62,14 +60,11 @@ class Message {
     };
   }
 
-  /// Định dạng thời gian cho hiển thị
   String get formattedTime {
     return "${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}";
   }
 
-  /// Kiểm tra tin nhắn có media không
   bool get hasMedia => mediaUrl != null && mediaUrl!.isNotEmpty;
 
-  /// Kiểm tra người dùng này đã đọc tin nhắn chưa
   bool isReadBy(String userId) => readBy.contains(userId);
 }

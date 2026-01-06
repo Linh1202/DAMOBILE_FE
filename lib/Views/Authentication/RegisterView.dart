@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../Utils/AppGlobals.dart';
 import '../../Utils/Handlers/NavigationHandler.dart';
 import '../../Utils/Handlers/ValidationHandler.dart';
 import '../../Utils/Handlers/DialogHandler.dart';
@@ -35,11 +34,11 @@ class _RegisterViewState extends State<RegisterView> {
     txtEmail.dispose();
     txtPassword.dispose();
     txtConfirmPassword.dispose();
+    txtPhoneNumber.dispose();
     super.dispose();
   }
 
   Future<void> clickDangKy() async {
-    // Close keyboard
     FocusScope.of(context).unfocus();
 
     var form = formKey.currentState;
@@ -54,6 +53,7 @@ class _RegisterViewState extends State<RegisterView> {
         email: txtEmail.text.trim(),
         password: txtPassword.text,
         fullName: txtHoTen.text.trim(),
+        phoneNumber: txtPhoneNumber.text.trim(),
       );
 
       if (response.success) {
@@ -141,6 +141,26 @@ class _RegisterViewState extends State<RegisterView> {
                   prefixIcon: Icons.mail_outline,
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) => ValidationHandler.getEmailError(v ?? ''),
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  "Số điện thoại",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 8),
+                CustomTextField(
+                  controller: txtPhoneNumber,
+                  hintText: "Nhập số điện thoại",
+                  prefixIcon: Icons.phone_outlined,
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => v == null || v.isEmpty ? "Vui lòng nhập số điện thoại" : null,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),

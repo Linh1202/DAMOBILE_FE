@@ -6,6 +6,7 @@ import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../Utils/Constants/AppStrings.dart';
 import '../Utils/Constants/AppEnums.dart';
+import '../Utils/Constants/ApiEndpoints.dart';
 
 class SocketService {
   static final SocketService instance = SocketService._internal();
@@ -20,9 +21,13 @@ class SocketService {
   Stream<Map<String, dynamic>> get messageStream => _messageController.stream;
 
   Future<String> _getWsUrl() async {
-    String base = AppStrings.baseUrl
-        .replaceFirst('http', 'ws')
-        .replaceFirst('/api', '/ws');
+    String base = AppStrings.baseUrl.replaceFirst('http', 'ws');
+
+    if (base.contains('/api')) {
+      base = base.replaceFirst('/api', ApiEndpoints.ws);
+    } else if (!base.endsWith(ApiEndpoints.ws)) {
+      base = "$base${ApiEndpoints.ws}";
+    }
 
     if (Platform.isAndroid) {
       if (base.contains('localhost')) {
@@ -51,7 +56,6 @@ class SocketService {
         headers: headers,
       );
       _isConnected = true;
-      print("WebSocket Connected to $_getWsUrl");
 
       _channel!.stream.listen(
         (message) {
@@ -61,20 +65,16 @@ class SocketService {
               _messageController.add(data);
             }
           } catch (e) {
-            print("Error decoding WebSocket message: $e");
           }
         },
         onDone: () {
           _isConnected = false;
-          print("WebSocket Connection Closed");
         },
         onError: (error) {
           _isConnected = false;
-          print("WebSocket Error: $error");
         },
       );
     } catch (e) {
-      print("WebSocket Connection Error: $e");
     }
   }
 
@@ -90,7 +90,6 @@ class SocketService {
     }
   }
 
-  /// Sends a WebRTC signaling message to a specific user (1-on-1)
   void sendDirectCall({
     required String targetUserId,
     required SignalingType type,

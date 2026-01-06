@@ -1,12 +1,10 @@
-/// Model FriendRequest - Lời mời kết bạn
 class FriendRequest {
   final String id;
   final String senderId;
   final String receiverId;
-  final String status; // pending, accepted, rejected
+  final String status;
   final DateTime createdAt;
   
-  // Thông tin sender (nếu BE trả về populated)
   final String? senderName;
   final String? senderAvatarUrl;
 
@@ -48,7 +46,6 @@ class FriendRequest {
     };
   }
 
-  /// Định dạng ngày tạo cho hiển thị
   String get formattedDate {
     return "${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}";
   }

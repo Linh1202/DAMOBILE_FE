@@ -2,14 +2,14 @@ import '../Services/ApiService.dart';
 import '../Models/User.dart';
 import '../Models/FriendRequest.dart';
 import '../Models/Api/BaseResponse.dart';
+import '../Utils/Constants/ApiEndpoints.dart';
 
 class FriendRepository {
   final ApiService _apiService = ApiService();
 
-  /// GET /friend/list - Lấy danh sách bạn bè
   Future<List<User>> getFriendList() async {
     try {
-      final response = await _apiService.getWithAuth('/friend/list');
+      final response = await _apiService.getWithAuth(ApiEndpoints.friendList);
       
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> friendsJson = response['data']['friends'] ?? [];
@@ -22,10 +22,9 @@ class FriendRepository {
     }
   }
 
-  /// GET /friend/requests - Lấy danh sách lời mời kết bạn đang chờ
   Future<List<FriendRequest>> getPendingRequests() async {
     try {
-      final response = await _apiService.getWithAuth('/friend/requests');
+      final response = await _apiService.getWithAuth(ApiEndpoints.friendRequests);
       
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> requestsJson = response['data']['requests'] ?? [];
@@ -38,10 +37,9 @@ class FriendRepository {
     }
   }
 
-  /// POST /friend/request - Gửi lời mời kết bạn
   Future<BaseResponse> sendFriendRequest(String receiverId) async {
     try {
-      final response = await _apiService.postWithAuth('/friend/request', {
+      final response = await _apiService.postWithAuth(ApiEndpoints.friendRequest, {
         'receiver_id': receiverId,
       });
       
@@ -51,10 +49,9 @@ class FriendRepository {
     }
   }
 
-  /// POST /friend/accept - Chấp nhận lời mời kết bạn
   Future<BaseResponse> acceptFriendRequest(String requestId) async {
     try {
-      final response = await _apiService.postWithAuth('/friend/accept', {
+      final response = await _apiService.postWithAuth(ApiEndpoints.friendAccept, {
         'request_id': requestId,
       });
       
@@ -64,10 +61,9 @@ class FriendRepository {
     }
   }
 
-  /// POST /friend/reject - Từ chối lời mời kết bạn
   Future<BaseResponse> rejectFriendRequest(String requestId) async {
     try {
-      final response = await _apiService.postWithAuth('/friend/reject', {
+      final response = await _apiService.postWithAuth(ApiEndpoints.friendReject, {
         'request_id': requestId,
       });
       
@@ -77,10 +73,9 @@ class FriendRepository {
     }
   }
 
-  /// POST /friend/cancel - Hủy lời mời đã gửi
   Future<BaseResponse> cancelFriendRequest(String requestId) async {
     try {
-      final response = await _apiService.postWithAuth('/friend/cancel', {
+      final response = await _apiService.postWithAuth(ApiEndpoints.friendCancel, {
         'request_id': requestId,
       });
       
@@ -90,10 +85,9 @@ class FriendRepository {
     }
   }
 
-  /// DELETE /friend/unfriend - Hủy kết bạn
   Future<BaseResponse> unfriend(String friendId) async {
     try {
-      final response = await _apiService.deleteWithAuth('/friend/unfriend', {
+      final response = await _apiService.deleteWithAuth(ApiEndpoints.friendUnfriend, {
         'friend_id': friendId,
       });
       

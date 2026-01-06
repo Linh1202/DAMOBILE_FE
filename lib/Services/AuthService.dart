@@ -1,7 +1,7 @@
-import 'package:doanmobile/Base/BaseResponse.dart';
 import 'package:doanmobile/Interfaces/Repositories/IAuthRepository.dart';
 import 'package:doanmobile/Interfaces/Services/IAuthServices.dart';
 import 'package:doanmobile/Models/Api/AuthResponse.dart';
+import 'package:doanmobile/Models/Api/BaseResponse.dart';
 import 'package:doanmobile/Repositories/AuthRepository.dart';
 
 class AuthService implements IAuthService {
@@ -25,12 +25,14 @@ class AuthService implements IAuthService {
     required String email,
     required String password,
     required String fullName,
+    required String phoneNumber,
   }) async {
     try {
       return await _authRepository.register(
         email: email,
         password: password,
         fullName: fullName,
+        phoneNumber: phoneNumber,
       );
     } catch (e) {
       rethrow;

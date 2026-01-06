@@ -1,21 +1,24 @@
-/// Model BaseResponse - Response chung từ API
-class BaseResponse {
+class BaseResponse<T> {
   final bool success;
   final String message;
+  final T? data;
 
   BaseResponse({
     required this.success,
     this.message = '',
+    this.data,
   });
 
-  factory BaseResponse.fromJson(dynamic json) {
-    final Map<String, dynamic> data = json is Map<String, dynamic> 
-        ? json 
-        : Map<String, dynamic>.from(json as Map);
-    
-    return BaseResponse(
-      success: data['success'] ?? false,
-      message: data['message'] ?? '',
+  factory BaseResponse.fromJson(
+    Map<String, dynamic> json, [
+    T Function(dynamic json)? fromJsonT,
+  ]) {
+    return BaseResponse<T>(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      data: (json['data'] != null && fromJsonT != null)
+          ? fromJsonT(json['data'])
+          : null,
     );
   }
 
@@ -23,6 +26,7 @@ class BaseResponse {
     return {
       'success': success,
       'message': message,
+      if (data != null) 'data': data,
     };
   }
 }

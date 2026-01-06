@@ -48,17 +48,17 @@ class _LoginViewState extends State<LoginView> {
         txtPassword.text,
       );
 
-      if (response.success) {
-        AppGlobals.userName = response.data.user.fullName.isNotEmpty
-            ? response.data.user.fullName
-            : response.data.user.email;
-        await AuthStorage.saveToken(response.data.token);
-        // Lưu thông tin user để sử dụng
+      if (response.success && response.data != null) {
+        final data = response.data!;
+        AppGlobals.userName = data.user.fullName.isNotEmpty
+            ? data.user.fullName
+            : data.user.email;
+        await AuthStorage.saveToken(data.token);
         await AuthStorage.saveUser({
-          'id': response.data.user.id,
-          'username': response.data.user.fullName, // Note: BE trả về userName, FE model field là fullName nhưng map từ username
-          'email': response.data.user.email,
-          'avatarUrl': response.data.user.avatarUrl,
+          'id': data.user.id,
+          'username': data.user.fullName,
+          'email': data.user.email,
+          'avatarUrl': data.user.avatarUrl,
         });
 
         DialogHandler.showSuccess(
