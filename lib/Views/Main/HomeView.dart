@@ -5,6 +5,7 @@ import 'package:doanmobile/Views/Main/CallView.dart';
 import 'package:doanmobile/Views/Chat/ChatDetailView.dart';
 import 'package:doanmobile/Views/Group/CreateGroupView.dart';
 import 'package:doanmobile/Views/Friends/FriendsView.dart';
+import 'package:doanmobile/Views/Settings/SettingsView.dart';
 import 'package:doanmobile/Widgets/Chat/ChatListItem.dart';
 import 'package:doanmobile/Utils/AppGlobals.dart';
 import 'package:doanmobile/Utils/Constants/AppEnums.dart';
@@ -130,12 +131,7 @@ class _HomeViewState extends State<HomeView> {
       // Tab 1: Bạn bè
       FriendsView(),
       // Tab 2: Cài đặt
-      const Center(
-        child: Text(
-          'Cài đặt',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
+      SettingsView(),
     ];
   }
 

@@ -222,22 +222,25 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
                 ),
               ),
               SizedBox(height: 40),
-              // 6 ô OTP
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CodeInputBox(controller: txtCode1, focusNode: focusNode1, nextFocusNode: focusNode2),
-                  SizedBox(width: 8),
-                  CodeInputBox(controller: txtCode2, focusNode: focusNode2, nextFocusNode: focusNode3),
-                  SizedBox(width: 8),
-                  CodeInputBox(controller: txtCode3, focusNode: focusNode3, nextFocusNode: focusNode4),
-                  SizedBox(width: 8),
-                  CodeInputBox(controller: txtCode4, focusNode: focusNode4, nextFocusNode: focusNode5),
-                  SizedBox(width: 8),
-                  CodeInputBox(controller: txtCode5, focusNode: focusNode5, nextFocusNode: focusNode6),
-                  SizedBox(width: 8),
-                  CodeInputBox(controller: txtCode6, focusNode: focusNode6),
-                ],
+              // 6 ô OTP - Responsive layout
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(child: CodeInputBox(controller: txtCode1, focusNode: focusNode1, nextFocusNode: focusNode2, width: 48, height: 56)),
+                    SizedBox(width: 6),
+                    Expanded(child: CodeInputBox(controller: txtCode2, focusNode: focusNode2, nextFocusNode: focusNode3, width: 48, height: 56)),
+                    SizedBox(width: 6),
+                    Expanded(child: CodeInputBox(controller: txtCode3, focusNode: focusNode3, nextFocusNode: focusNode4, width: 48, height: 56)),
+                    SizedBox(width: 6),
+                    Expanded(child: CodeInputBox(controller: txtCode4, focusNode: focusNode4, nextFocusNode: focusNode5, width: 48, height: 56)),
+                    SizedBox(width: 6),
+                    Expanded(child: CodeInputBox(controller: txtCode5, focusNode: focusNode5, nextFocusNode: focusNode6, width: 48, height: 56)),
+                    SizedBox(width: 6),
+                    Expanded(child: CodeInputBox(controller: txtCode6, focusNode: focusNode6, width: 48, height: 56)),
+                  ],
+                ),
               ),
               SizedBox(height: 20),
               RichText(

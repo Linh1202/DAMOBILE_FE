@@ -50,5 +50,9 @@ class AppStrings {
   static const String contactSupport = "Liên hệ hỗ trợ";
   static const String termsAndPolicy = "Điều khoản & Chính sách";
 
-  static const String baseUrl = "https://damobilebe-production.up.railway.app/api";
+  // ⚠️ ĐỔI THÀNH localhost:8080 KHI TEST LOCAL BE
+  // Production: https://damobilebe-production.up.railway.app/api
+  // Local: http://localhost:8080/api (hoặc 10.0.2.2:8080 cho Android Emulator)
+  static const String baseUrl = "http://localhost:8080/api";
+  // static const String baseUrl = "https://damobilebe-production.up.railway.app/api";
 }
