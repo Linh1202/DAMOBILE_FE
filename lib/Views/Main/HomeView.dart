@@ -6,6 +6,8 @@ import 'package:doanmobile/Views/Chat/ChatDetailView.dart';
 import 'package:doanmobile/Views/Group/CreateGroupView.dart';
 import 'package:doanmobile/Views/Friends/FriendsView.dart';
 import 'package:doanmobile/Views/Settings/SettingsView.dart';
+import 'package:doanmobile/Views/Search/SearchView.dart';
+import 'package:doanmobile/Views/Notifications/NotificationsView.dart';
 import 'package:doanmobile/Widgets/Chat/ChatListItem.dart';
 import 'package:doanmobile/Utils/AppGlobals.dart';
 import 'package:doanmobile/Utils/Constants/AppEnums.dart';
@@ -188,7 +190,10 @@ class _HomeViewState extends State<HomeView> {
           IconButton(
             icon: Icon(Icons.search, color: AppColors.textPrimary),
             onPressed: () {
-              // TODO: Xử lý tìm kiếm
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SearchView()),
+              );
             },
           ),
           // Nút 2: Thông báo với badge
@@ -197,7 +202,10 @@ class _HomeViewState extends State<HomeView> {
               IconButton(
                 icon: Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
                 onPressed: () {
-                  // TODO: Xử lý thông báo
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => NotificationsView()),
+                  );
                 },
               ),
               Positioned(
