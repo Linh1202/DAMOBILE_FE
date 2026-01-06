@@ -3,6 +3,8 @@ import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Services/WebRTCService.dart';
 import 'package:doanmobile/Views/Main/CallView.dart';
 import 'package:doanmobile/Views/Chat/ChatDetailView.dart';
+import 'package:doanmobile/Views/Group/CreateGroupView.dart';
+import 'package:doanmobile/Views/Friends/FriendsView.dart';
 import 'package:doanmobile/Widgets/Chat/ChatListItem.dart';
 import 'package:doanmobile/Utils/AppGlobals.dart';
 import 'package:doanmobile/Utils/Constants/AppEnums.dart';
@@ -126,12 +128,7 @@ class _HomeViewState extends State<HomeView> {
       // Tab 0: Chat - Sử dụng ChatListView (không có AppBar riêng)
       _ChatListBody(),
       // Tab 1: Bạn bè
-      const Center(
-        child: Text(
-          'Bạn bè',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
+      FriendsView(),
       // Tab 2: Cài đặt
       const Center(
         child: Text(
@@ -237,7 +234,10 @@ class _HomeViewState extends State<HomeView> {
           IconButton(
             icon: Icon(Icons.group_add_outlined, color: AppColors.textPrimary),
             onPressed: () {
-              // TODO: Xử lý tạo nhóm
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CreateGroupView()),
+              );
             },
           ),
         ],
