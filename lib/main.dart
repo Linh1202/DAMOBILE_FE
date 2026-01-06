@@ -9,7 +9,6 @@ import 'package:doanmobile/Views/Main/HomeView.dart';
 import 'Utils/AppGlobals.dart';
 import 'package:flutter/material.dart';
 
-
 void main() {
   runApp(MaterialApp(
     navigatorKey: AppGlobals.navigatorKey,

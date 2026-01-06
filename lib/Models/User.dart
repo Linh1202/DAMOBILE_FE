@@ -19,6 +19,7 @@ class User {
       id: data['id']?.toString() ?? '',
       email: data['email']?.toString() ?? '',
       fullName: data['username'] ?? data['full_name'] ?? data['fullName'] ?? '',
+      avatarUrl: data['avatar_url'] ?? data['avatarUrl'],
     );
   }
 

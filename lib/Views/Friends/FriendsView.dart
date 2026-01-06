@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../Utils/Constants/AppColors.dart';
+import '../../Utils/Handlers/DialogHandler.dart';
 import '../../Widgets/Friends/FriendListItem.dart';
 import '../../Widgets/Friends/FriendRequestItem.dart';
 import '../../Widgets/Friends/SearchUserItem.dart';
+import '../../Services/FriendService.dart';
+import '../../Repositories/UserRepository.dart';
+import '../../Models/User.dart';
+import '../../Models/FriendRequest.dart' as model;
+import '../../Views/Chat/ChatDetailView.dart';
 
 class FriendsView extends StatefulWidget {
   @override
@@ -13,30 +19,23 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
   late TabController _tabController;
   TextEditingController txtSearch = TextEditingController();
 
-  // Mock data - Danh sách bạn bè
-  final List<Map<String, dynamic>> _friends = [
-    {"id": "1", "name": "Minh Anh", "avatarUrl": "Assets/Images/anh1.png", "isOnline": true, "lastSeen": ""},
-    {"id": "2", "name": "Tuấn Kiệt", "avatarUrl": "Assets/Images/anh1.png", "isOnline": false, "lastSeen": "5 phút trước"},
-    {"id": "3", "name": "Hương Giang", "avatarUrl": "Assets/Images/anh1.png", "isOnline": true, "lastSeen": ""},
-    {"id": "4", "name": "Đức Anh", "avatarUrl": "Assets/Images/anh1.png", "isOnline": false, "lastSeen": "2 giờ trước"},
-    {"id": "5", "name": "Thu Thảo", "avatarUrl": "Assets/Images/anh1.png", "isOnline": true, "lastSeen": ""},
-    {"id": "6", "name": "Hoàng Long", "avatarUrl": "Assets/Images/anh1.png", "isOnline": false, "lastSeen": "1 ngày trước"},
-  ];
+  final FriendService _friendService = FriendService();
 
-  // Mock data - Lời mời kết bạn
-  final List<Map<String, dynamic>> _friendRequests = [
-    {"id": "7", "name": "Thu Thảo", "avatarUrl": "Assets/Images/anh1.png", "requestDate": "29/12/2025"},
-    {"id": "8", "name": "Hoàng Long", "avatarUrl": "Assets/Images/anh1.png", "requestDate": "28/12/2025"},
-  ];
-
-  // Kết quả tìm kiếm
+  // Data lists
+  List<User> _friends = [];
+  List<model.FriendRequest> _friendRequests = [];
   List<Map<String, dynamic>> _searchResults = [];
+
+  // Loading states
+  bool _isLoadingFriends = true;
+  bool _isLoadingRequests = true;
   bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadData();
   }
 
   @override
@@ -46,8 +45,67 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     super.dispose();
   }
 
-  void _onSearch(String query) {
+  Future<void> _loadData() async {
+    await Future.wait([
+      _loadFriends(),
+      _loadFriendRequests(),
+    ]);
+  }
+
+  Future<void> _loadFriends() async {
+    try {
+      final friends = await _friendService.getFriends();
+      if (mounted) {
+        setState(() {
+          _friends = friends;
+          _isLoadingFriends = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingFriends = false);
+        var message = e.toString();
+        if (message.startsWith('Exception: ')) {
+          message = message.replaceFirst('Exception: ', '');
+        }
+        DialogHandler.showError(message);
+      }
+    }
+  }
+
+  Future<void> _loadFriendRequests() async {
+    try {
+      final requests = await _friendService.getPendingRequests();
+      if (mounted) {
+        setState(() {
+          _friendRequests = requests;
+          _isLoadingRequests = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingRequests = false);
+        var message = e.toString();
+        if (message.startsWith('Exception: ')) {
+          message = message.replaceFirst('Exception: ', '');
+        }
+        DialogHandler.showError(message);
+      }
+    }
+  }
+
+  void _onSearch(String query) async {
     if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    // Kiểm tra định dạng email
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(query)) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
@@ -59,34 +117,91 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
       _isSearching = true;
     });
 
-    // TODO: Gọi API tìm kiếm
-    // Mock search results
-    Future.delayed(Duration(milliseconds: 500), () {
+    try {
+      final users = await UserRepository().findUserByEmail(query);
       if (mounted) {
         setState(() {
-          _searchResults = [
-            {"id": "10", "name": "Nguyễn Văn A", "avatarUrl": "Assets/Images/anh1.png", "email": "nguyenvana@gmail.com", "status": FriendStatus.none},
-            {"id": "11", "name": "Trần Thị B", "avatarUrl": "Assets/Images/anh1.png", "email": "tranthib@gmail.com", "status": FriendStatus.pending},
-            {"id": "12", "name": "Lê Văn C", "avatarUrl": "Assets/Images/anh1.png", "email": "levanc@gmail.com", "status": FriendStatus.friend},
-          ];
+          _searchResults = users.map((user) => {
+            "id": user.id,
+            "name": user.fullName,
+            "avatarUrl": user.avatarUrl ?? "Assets/Images/anh1.png",
+            "email": user.email,
+            "status": FriendStatus.none, // TODO: Check actual friend status
+          }).toList();
           _isSearching = false;
         });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+        var message = e.toString();
+        if (message.startsWith('Exception: ')) {
+          message = message.replaceFirst('Exception: ', '');
+        }
+        DialogHandler.showError(message);
+      }
+    }
   }
 
-  void _onAcceptFriendRequest(String id) {
-    // TODO: Gọi API chấp nhận lời mời
-    setState(() {
-      _friendRequests.removeWhere((req) => req["id"] == id);
-    });
+  Future<void> _onAcceptFriendRequest(String id) async {
+    try {
+      final response = await _friendService.acceptFriendRequest(id);
+      if (response.success) {
+        setState(() {
+          _friendRequests.removeWhere((req) => req.id == id);
+        });
+        DialogHandler.showSuccess(response.message.isNotEmpty ? response.message : "Đã chấp nhận lời mời kết bạn");
+        _loadFriends(); // Reload friend list
+      } else {
+        DialogHandler.showError(response.message);
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    }
   }
 
-  void _onRejectFriendRequest(String id) {
-    // TODO: Gọi API từ chối lời mời
-    setState(() {
-      _friendRequests.removeWhere((req) => req["id"] == id);
-    });
+  Future<void> _onRejectFriendRequest(String id) async {
+    try {
+      final response = await _friendService.rejectFriendRequest(id);
+      if (response.success) {
+        setState(() {
+          _friendRequests.removeWhere((req) => req.id == id);
+        });
+        DialogHandler.showSuccess(response.message.isNotEmpty ? response.message : "Đã từ chối lời mời");
+      } else {
+        DialogHandler.showError(response.message);
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    }
+  }
+
+  Future<void> _onSendFriendRequest(String userId, int index) async {
+    try {
+      final response = await _friendService.sendFriendRequest(userId);
+      if (response.success) {
+        setState(() {
+          _searchResults[index]["status"] = FriendStatus.pending;
+        });
+        DialogHandler.showSuccess(response.message.isNotEmpty ? response.message : "Đã gửi lời mời kết bạn");
+      } else {
+        DialogHandler.showError(response.message);
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    }
   }
 
   @override
@@ -159,8 +274,57 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     );
   }
 
+  Future<void> _onUnfriend(String friendId, String friendName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Hủy kết bạn"),
+        content: Text("Bạn có chắc chắn muốn hủy kết bạn với $friendName?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("Hủy"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              "Đồng ý",
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final response = await _friendService.unfriend(friendId);
+        if (response.success) {
+          DialogHandler.showSuccess("Đã hủy kết bạn với $friendName");
+          _loadFriends(); // Reload list
+        } else {
+          DialogHandler.showError(response.message);
+        }
+      } catch (e) {
+        var message = e.toString();
+        if (message.startsWith('Exception: ')) {
+          message = message.replaceFirst('Exception: ', '');
+        }
+        DialogHandler.showError(message);
+      }
+    }
+  }
+
   /// Tab 1: Danh sách bạn bè
   Widget _buildFriendsList() {
+    if (_isLoadingFriends) {
+      return Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ),
+      );
+    }
+
     if (_friends.isEmpty) {
       return _buildEmptyState(
         icon: Icons.people_outline,
@@ -168,26 +332,66 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
       );
     }
 
-    return ListView.separated(
-      itemCount: _friends.length,
-      separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
-      itemBuilder: (context, index) {
-        final friend = _friends[index];
-        return FriendListItem(
-          name: friend["name"],
-          avatarUrl: friend["avatarUrl"],
-          isOnline: friend["isOnline"],
-          lastSeen: friend["lastSeen"],
-          onChatTap: () {
-            // TODO: Mở chat với bạn
-          },
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadFriends,
+      child: ListView.separated(
+        itemCount: _friends.length,
+        separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
+        itemBuilder: (context, index) {
+          final friend = _friends[index];
+          return FriendListItem(
+            name: friend.fullName,
+            avatarUrl: friend.avatarUrl ?? "Assets/Images/anh1.png",
+            isOnline: false, // TODO: Implement online status
+            lastSeen: "",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatDetailView(
+                    name: friend.fullName,
+                    avatarUrl: friend.avatarUrl ?? "Assets/Images/anh1.png",
+                    isOnline: false, // TODO: Implement online status
+                  ),
+                ),
+              );
+            },
+            trailing: PopupMenuButton<String>(
+              icon: Icon(Icons.more_horiz, color: AppColors.textSecondary),
+              onSelected: (value) {
+                if (value == 'unfriend') {
+                  _onUnfriend(friend.id, friend.fullName);
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'unfriend',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_remove_outlined, color: AppColors.error, size: 20),
+                      SizedBox(width: 8),
+                      Text("Hủy kết bạn", style: TextStyle(color: AppColors.error)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
   /// Tab 2: Lời mời kết bạn
   Widget _buildFriendRequests() {
+    if (_isLoadingRequests) {
+      return Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ),
+      );
+    }
+
     if (_friendRequests.isEmpty) {
       return _buildEmptyState(
         icon: Icons.mail_outline,
@@ -195,19 +399,22 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
       );
     }
 
-    return ListView.separated(
-      itemCount: _friendRequests.length,
-      separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
-      itemBuilder: (context, index) {
-        final request = _friendRequests[index];
-        return FriendRequestItem(
-          name: request["name"],
-          avatarUrl: request["avatarUrl"],
-          requestDate: request["requestDate"],
-          onAccept: () => _onAcceptFriendRequest(request["id"]),
-          onReject: () => _onRejectFriendRequest(request["id"]),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _loadFriendRequests,
+      child: ListView.separated(
+        itemCount: _friendRequests.length,
+        separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
+        itemBuilder: (context, index) {
+          final request = _friendRequests[index];
+          return FriendRequestItem(
+            name: request.senderName ?? "Người dùng",
+            avatarUrl: request.senderAvatarUrl ?? "Assets/Images/anh1.png",
+            requestDate: request.formattedDate,
+            onAccept: () => _onAcceptFriendRequest(request.id),
+            onReject: () => _onRejectFriendRequest(request.id),
+          );
+        },
+      ),
     );
   }
 
@@ -221,8 +428,9 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
           child: TextField(
             controller: txtSearch,
             onChanged: _onSearch,
+            keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
-              hintText: "Tìm kiếm người dùng...",
+              hintText: "Nhập email để tìm kiếm...",
               hintStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
               filled: true,
@@ -246,8 +454,17 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
   Widget _buildSearchResults() {
     if (txtSearch.text.isEmpty) {
       return _buildEmptyState(
-        icon: Icons.search,
-        message: "Nhập tên để tìm kiếm",
+        icon: Icons.email_outlined,
+        message: "Nhập email để tìm kiếm",
+      );
+    }
+
+    // Kiểm tra format email để hiển thị message phù hợp
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(txtSearch.text) && !_isSearching) {
+      return _buildEmptyState(
+        icon: Icons.email_outlined,
+        message: "Vui lòng nhập đúng định dạng email",
       );
     }
 
@@ -277,12 +494,7 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
           avatarUrl: user["avatarUrl"],
           email: user["email"],
           status: user["status"],
-          onAddFriend: () {
-            // TODO: Gọi API gửi lời mời kết bạn
-            setState(() {
-              _searchResults[index]["status"] = FriendStatus.pending;
-            });
-          },
+          onAddFriend: () => _onSendFriendRequest(user["id"], index),
         );
       },
     );

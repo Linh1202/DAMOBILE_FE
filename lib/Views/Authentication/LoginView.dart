@@ -53,6 +53,13 @@ class _LoginViewState extends State<LoginView> {
             ? response.data.user.fullName
             : response.data.user.email;
         await AuthStorage.saveToken(response.data.token);
+        // Lưu thông tin user để sử dụng
+        await AuthStorage.saveUser({
+          'id': response.data.user.id,
+          'username': response.data.user.fullName, // Note: BE trả về userName, FE model field là fullName nhưng map từ username
+          'email': response.data.user.email,
+          'avatarUrl': response.data.user.avatarUrl,
+        });
 
         DialogHandler.showSuccess(
           response.message.isNotEmpty
