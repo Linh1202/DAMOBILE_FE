@@ -11,12 +11,14 @@ class User {
     this.avatarUrl,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
+  factory User.fromJson(dynamic json) {
+    final Map<String, dynamic> data = json is Map<String, dynamic> 
+        ? json 
+        : Map<String, dynamic>.from(json as Map);
     return User(
-      id: json['id'] ?? '',
-      email: json['email'] ?? '',
-      fullName: json['full_name'] ?? '',
-      avatarUrl: json['avatar_url'],
+      id: data['id']?.toString() ?? '',
+      email: data['email']?.toString() ?? '',
+      fullName: data['username'] ?? data['full_name'] ?? data['fullName'] ?? '',
     );
   }
 

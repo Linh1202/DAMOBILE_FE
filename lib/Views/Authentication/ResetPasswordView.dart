@@ -6,13 +6,48 @@ import '../../Utils/Constants/AppColors.dart';
 import '../../Utils/Constants/AppStrings.dart';
 import '../../Widgets/Buttons/PrimaryButton.dart';
 import '../../Widgets/Inputs/CustomTextField.dart';
+import '../../Services/AuthService.dart';
 
-class ResetPasswordView extends StatelessWidget {
+class ResetPasswordView extends StatefulWidget {
+  @override
+  _ResetPasswordViewState createState() => _ResetPasswordViewState();
+}
+
+class _ResetPasswordViewState extends State<ResetPasswordView> {
   TextEditingController txtNewPassword = TextEditingController();
   TextEditingController txtConfirmPassword = TextEditingController();
+  
+  AuthService authService = AuthService();
+  bool isLoading = false;
+  bool obscureNewPassword = true;
+  bool obscureConfirmPassword = true;
+  
+  String email = "";
+  String otp = "";
 
-  void clickDatLaiMatKhau() {
-    // Validate new password
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Nhận email và OTP từ màn hình VerifyCode
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      email = args['email'] ?? "";
+      otp = args['otp'] ?? "";
+    }
+  }
+
+  @override
+  void dispose() {
+    txtNewPassword.dispose();
+    txtConfirmPassword.dispose();
+    super.dispose();
+  }
+
+  Future<void> clickDatLaiMatKhau() async {
+    // Đóng bàn phím
+    FocusScope.of(context).unfocus();
+
+    // Validate
     if (txtNewPassword.text.isEmpty) {
       DialogHandler.showError("Vui lòng nhập mật khẩu mới");
       return;
@@ -22,7 +57,6 @@ class ResetPasswordView extends StatelessWidget {
       return;
     }
 
-    // Validate confirm password
     if (txtConfirmPassword.text.isEmpty) {
       DialogHandler.showError("Vui lòng xác nhận mật khẩu mới");
       return;
@@ -32,13 +66,40 @@ class ResetPasswordView extends StatelessWidget {
       return;
     }
 
-    // Success - proceed to success screen
-    DialogHandler.showSuccess("Đặt lại mật khẩu thành công!");
-    NavigationHandler.goToSuccess();
-  }
+    if (email.isEmpty || otp.isEmpty) {
+      DialogHandler.showError("Thông tin xác thực không hợp lệ. Vui lòng thử lại từ đầu.");
+      return;
+    }
 
-  void clickLienHeHoTro() {
-    DialogHandler.showInfo("Liên hệ: support@hangt1.com");
+    setState(() => isLoading = true);
+
+    try {
+      // Gọi API /user/reset-password
+      var response = await authService.resetPassword(
+        email: email,
+        newPassword: txtNewPassword.text,
+        code: otp, // BE sẽ nhận field 'otp'
+      );
+
+      if (response.success) {
+        DialogHandler.showSuccess(
+          response.message.isNotEmpty 
+              ? response.message 
+              : "Đặt lại mật khẩu thành công!",
+        );
+        NavigationHandler.goToSuccess();
+      } else {
+        DialogHandler.showError(response.message);
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -97,8 +158,13 @@ class ResetPasswordView extends StatelessWidget {
                 controller: txtNewPassword,
                 hintText: AppStrings.passwordPlaceholder,
                 prefixIcon: Icons.lock_outline,
-                suffixIcon: Icons.visibility_off_outlined,
-                obscureText: true,
+                suffixIcon: obscureNewPassword 
+                    ? Icons.visibility_off_outlined 
+                    : Icons.visibility_outlined,
+                obscureText: obscureNewPassword,
+                onSuffixIconTap: () {
+                  setState(() => obscureNewPassword = !obscureNewPassword);
+                },
               ),
               SizedBox(height: 20),
               Align(
@@ -117,13 +183,19 @@ class ResetPasswordView extends StatelessWidget {
                 controller: txtConfirmPassword,
                 hintText: AppStrings.passwordPlaceholder,
                 prefixIcon: Icons.check_circle_outline,
-                suffixIcon: Icons.visibility_off_outlined,
-                obscureText: true,
+                suffixIcon: obscureConfirmPassword 
+                    ? Icons.visibility_off_outlined 
+                    : Icons.visibility_outlined,
+                obscureText: obscureConfirmPassword,
+                onSuffixIconTap: () {
+                  setState(() => obscureConfirmPassword = !obscureConfirmPassword);
+                },
               ),
               SizedBox(height: 30),
               PrimaryButton(
                 text: AppStrings.resetPassword,
-                onPressed: clickDatLaiMatKhau,
+                onPressed: isLoading ? null : clickDatLaiMatKhau,
+                isLoading: isLoading,
               ),
               SizedBox(height: 30),
               GestureDetector(
@@ -159,7 +231,9 @@ class ResetPasswordView extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: clickLienHeHoTro,
+                    onTap: () {
+                      DialogHandler.showInfo("Liên hệ: support@hangt1.com");
+                    },
                     child: Text(
                       AppStrings.contactSupport,
                       style: TextStyle(

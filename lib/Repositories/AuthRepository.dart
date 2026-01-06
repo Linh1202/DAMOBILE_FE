@@ -63,7 +63,8 @@ class AuthRepository implements IAuthRepository {
   @override
   Future<BaseResponse<dynamic>> forgotPassword(String email) async {
     try {
-      final response = await _apiService.post('/auth/forgot-password', {
+      // Đổi từ /auth/forgot-password -> /user/forgot-password (theo BE API)
+      final response = await _apiService.post('/user/forgot-password', {
         'email': email,
       });
       return BaseResponse<dynamic>.fromJson(response, (data) => data);
@@ -72,17 +73,17 @@ class AuthRepository implements IAuthRepository {
     }
   }
 
+  // NOTE: BE không có API verify-code riêng.
+  // BE dùng 1 API /user/reset-password nhận cả email + otp + new_password
+  // Giữ lại method này để không break code, nhưng sẽ trả về success luôn
   @override
   Future<BaseResponse<dynamic>> verifyCode(String email, String code) async {
-    try {
-      final response = await _apiService.post('/auth/verify-code', {
-        'email': email,
-        'code': code,
-      });
-      return BaseResponse<dynamic>.fromJson(response, (data) => data);
-    } catch (e) {
-      rethrow;
-    }
+    // Tạm thời trả về success, việc verify sẽ được thực hiện trong resetPassword
+    return BaseResponse<dynamic>(
+      success: true,
+      message: "Mã xác thực hợp lệ",
+      data: null,
+    );
   }
 
   @override
@@ -92,10 +93,12 @@ class AuthRepository implements IAuthRepository {
     required String code,
   }) async {
     try {
-      final response = await _apiService.post('/auth/reset-password', {
+      // Đổi từ /auth/reset-password -> /user/reset-password (theo BE API)
+      // Đổi field 'code' -> 'otp' (theo BE API yêu cầu)
+      final response = await _apiService.post('/user/reset-password', {
         'email': email,
         'new_password': newPassword,
-        'code': code,
+        'otp': code, // BE dùng 'otp' thay vì 'code'
       });
       return BaseResponse<dynamic>.fromJson(response, (data) => data);
     } catch (e) {
@@ -103,14 +106,16 @@ class AuthRepository implements IAuthRepository {
     }
   }
 
+  // NOTE: BE không có API logout riêng. 
+  // Logout chỉ cần xóa token ở local storage
   @override
   Future<BaseResponse<dynamic>> logout() async {
-    try {
-      final response = await _apiService.post('/auth/logout', {});
-      return BaseResponse<dynamic>.fromJson(response, (data) => data);
-    } catch (e) {
-      rethrow;
-    }
+    // TODO: Xóa token từ local storage
+    return BaseResponse<dynamic>(
+      success: true,
+      message: "Đăng xuất thành công",
+      data: null,
+    );
   }
 
   @override

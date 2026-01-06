@@ -6,11 +6,29 @@ import '../../Utils/Constants/AppColors.dart';
 import '../../Utils/Constants/AppStrings.dart';
 import '../../Widgets/Buttons/PrimaryButton.dart';
 import '../../Widgets/Inputs/CustomTextField.dart';
+import '../../Services/AuthService.dart';
 
-class ForgotPasswordView extends StatelessWidget {
+class ForgotPasswordView extends StatefulWidget {
+  @override
+  _ForgotPasswordViewState createState() => _ForgotPasswordViewState();
+}
+
+class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   TextEditingController txtEmail = TextEditingController();
+  AuthService authService = AuthService();
+  bool isLoading = false;
 
-  void clickGuiMaXacThuc() {
+  @override
+  void dispose() {
+    txtEmail.dispose();
+    super.dispose();
+  }
+
+  Future<void> clickGuiMaXacThuc() async {
+    // Đóng bàn phím
+    FocusScope.of(context).unfocus();
+
+    // Validate email
     if (txtEmail.text.isEmpty) {
       DialogHandler.showError("Vui lòng nhập email");
       return;
@@ -20,11 +38,36 @@ class ForgotPasswordView extends StatelessWidget {
       return;
     }
 
-    DialogHandler.showSuccess("Mã xác thực đã được gửi!");
-    NavigationHandler.goToVerifyCode();
-  }
+    setState(() => isLoading = true);
 
-  void clickLienHeHoTro() {
+    try {
+      // Gọi API /user/forgot-password
+      var response = await authService.forgotPassword(txtEmail.text.trim());
+
+      if (response.success) {
+        DialogHandler.showSuccess(
+          response.message.isNotEmpty 
+              ? response.message 
+              : "Mã xác thực đã được gửi đến email của bạn!",
+        );
+        // Chuyển sang màn hình nhập OTP, truyền email qua arguments
+        Navigator.pushNamed(
+          context,
+          '/verify-code',
+          arguments: {'email': txtEmail.text.trim()},
+        );
+      } else {
+        DialogHandler.showError(response.message);
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -83,11 +126,13 @@ class ForgotPasswordView extends StatelessWidget {
                 controller: txtEmail,
                 hintText: "user@gmail.com",
                 prefixIcon: Icons.mail_outline,
+                keyboardType: TextInputType.emailAddress,
               ),
               SizedBox(height: 30),
               PrimaryButton(
                 text: AppStrings.sendCode,
-                onPressed: clickGuiMaXacThuc,
+                onPressed: isLoading ? null : clickGuiMaXacThuc,
+                isLoading: isLoading,
               ),
               SizedBox(height: 50),
               Row(
@@ -101,7 +146,9 @@ class ForgotPasswordView extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: clickLienHeHoTro,
+                    onTap: () {
+                      DialogHandler.showInfo("Liên hệ: support@hangt1.com");
+                    },
                     child: Text(
                       AppStrings.contactSupport,
                       style: TextStyle(

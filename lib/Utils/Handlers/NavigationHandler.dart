@@ -36,7 +36,7 @@ class NavigationHandler {
 
   // Main app routes
   static void goToHome() {
-    Navigator.pushNamed(_context, '/home');
+    Navigator.pushNamedAndRemoveUntil(_context, '/home', (route) => false);
   }
 
   // Navigation actions

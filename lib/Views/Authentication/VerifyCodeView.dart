@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../Utils/Handlers/NavigationHandler.dart';
-import '../../Utils/Handlers/ValidationHandler.dart';
 import '../../Utils/Handlers/DialogHandler.dart';
 import '../../Utils/Constants/AppColors.dart';
 import '../../Utils/Constants/AppStrings.dart';
 import '../../Widgets/Buttons/PrimaryButton.dart';
 import '../../Widgets/Inputs/CodeInputBox.dart';
+import '../../Services/AuthService.dart';
 
 class VerifyCodeView extends StatefulWidget {
   @override
@@ -14,24 +14,56 @@ class VerifyCodeView extends StatefulWidget {
 }
 
 class _VerifyCodeViewState extends State<VerifyCodeView> {
+  // BE API yêu cầu OTP 6 số (validate:"required,len=6")
   TextEditingController txtCode1 = TextEditingController();
   TextEditingController txtCode2 = TextEditingController();
   TextEditingController txtCode3 = TextEditingController();
   TextEditingController txtCode4 = TextEditingController();
+  TextEditingController txtCode5 = TextEditingController();
+  TextEditingController txtCode6 = TextEditingController();
 
   FocusNode focusNode1 = FocusNode();
   FocusNode focusNode2 = FocusNode();
   FocusNode focusNode3 = FocusNode();
   FocusNode focusNode4 = FocusNode();
+  FocusNode focusNode5 = FocusNode();
+  FocusNode focusNode6 = FocusNode();
 
   int _secondsRemaining = 119;
   Timer? _timer;
-  String maskedEmail = "us***@gmail.com";
+  String email = "";
+  String maskedEmail = "";
+  bool isLoading = false;
+  bool isResending = false;
+
+  AuthService authService = AuthService();
 
   @override
   void initState() {
     super.initState();
     _startTimer();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Nhận email từ màn hình ForgotPassword
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['email'] != null) {
+      email = args['email'];
+      // Mask email: user@gmail.com -> us***@gmail.com
+      maskedEmail = _maskEmail(email);
+    }
+  }
+
+  String _maskEmail(String email) {
+    if (email.isEmpty) return "";
+    final parts = email.split('@');
+    if (parts.length != 2) return email;
+    final name = parts[0];
+    final domain = parts[1];
+    if (name.length <= 2) return email;
+    return "${name.substring(0, 2)}***@$domain";
   }
 
   @override
@@ -41,10 +73,14 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
     txtCode2.dispose();
     txtCode3.dispose();
     txtCode4.dispose();
+    txtCode5.dispose();
+    txtCode6.dispose();
     focusNode1.dispose();
     focusNode2.dispose();
     focusNode3.dispose();
     focusNode4.dispose();
+    focusNode5.dispose();
+    focusNode6.dispose();
     super.dispose();
   }
 
@@ -66,16 +102,19 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
     return "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
   }
 
+  String get _otpCode {
+    return txtCode1.text + txtCode2.text + txtCode3.text + 
+           txtCode4.text + txtCode5.text + txtCode6.text;
+  }
+
   void clickXacNhan() {
-    String code = txtCode1.text + txtCode2.text + txtCode3.text + txtCode4.text;
-    
     // Validate OTP
-    if (code.isEmpty) {
+    if (_otpCode.isEmpty) {
       DialogHandler.showError("Vui lòng nhập mã xác thực");
       return;
     }
-    if (!ValidationHandler.isValidOTP(code)) {
-      DialogHandler.showError("Mã xác thực phải có 4 chữ số");
+    if (_otpCode.length != 6) {
+      DialogHandler.showError("Mã xác thực phải có 6 chữ số");
       return;
     }
 
@@ -85,26 +124,54 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
       return;
     }
 
-    // Success - proceed to reset password
-    DialogHandler.showSuccess("Xác thực thành công!");
-    NavigationHandler.goToResetPassword();
+    // Chuyển sang màn hình đặt lại mật khẩu, truyền email và OTP
+    Navigator.pushNamed(
+      context,
+      '/reset-password',
+      arguments: {
+        'email': email,
+        'otp': _otpCode,
+      },
+    );
   }
 
-  void clickGuiLaiMa() {
-    setState(() {
-      _secondsRemaining = 119;
-      txtCode1.clear();
-      txtCode2.clear();
-      txtCode3.clear();
-      txtCode4.clear();
-    });
-    _timer?.cancel();
-    _startTimer();
-    focusNode1.requestFocus();
-    DialogHandler.showSuccess("Mã xác thực mới đã được gửi!");
-  }
+  Future<void> clickGuiLaiMa() async {
+    if (email.isEmpty) {
+      DialogHandler.showError("Không tìm thấy email. Vui lòng quay lại và thử lại.");
+      return;
+    }
 
-  void clickLienHeHoTro() {
+    setState(() => isResending = true);
+
+    try {
+      var response = await authService.forgotPassword(email);
+
+      if (response.success) {
+        setState(() {
+          _secondsRemaining = 119;
+          txtCode1.clear();
+          txtCode2.clear();
+          txtCode3.clear();
+          txtCode4.clear();
+          txtCode5.clear();
+          txtCode6.clear();
+        });
+        _timer?.cancel();
+        _startTimer();
+        focusNode1.requestFocus();
+        DialogHandler.showSuccess("Mã xác thực mới đã được gửi!");
+      } else {
+        DialogHandler.showError(response.message);
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    } finally {
+      if (mounted) setState(() => isResending = false);
+    }
   }
 
   @override
@@ -143,9 +210,9 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
                     height: 1.5,
                   ),
                   children: [
-                    TextSpan(text: "Chúng tôi đã gửi mã gồm 4 chữ số đến email "),
+                    TextSpan(text: "Chúng tôi đã gửi mã gồm 6 chữ số đến email\n"),
                     TextSpan(
-                      text: maskedEmail,
+                      text: maskedEmail.isNotEmpty ? maskedEmail : "us***@gmail.com",
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -155,16 +222,21 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
                 ),
               ),
               SizedBox(height: 40),
+              // 6 ô OTP
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CodeInputBox(controller: txtCode1, focusNode: focusNode1, nextFocusNode: focusNode2),
-                  SizedBox(width: 15),
+                  SizedBox(width: 8),
                   CodeInputBox(controller: txtCode2, focusNode: focusNode2, nextFocusNode: focusNode3),
-                  SizedBox(width: 15),
+                  SizedBox(width: 8),
                   CodeInputBox(controller: txtCode3, focusNode: focusNode3, nextFocusNode: focusNode4),
-                  SizedBox(width: 15),
-                  CodeInputBox(controller: txtCode4, focusNode: focusNode4),
+                  SizedBox(width: 8),
+                  CodeInputBox(controller: txtCode4, focusNode: focusNode4, nextFocusNode: focusNode5),
+                  SizedBox(width: 8),
+                  CodeInputBox(controller: txtCode5, focusNode: focusNode5, nextFocusNode: focusNode6),
+                  SizedBox(width: 8),
+                  CodeInputBox(controller: txtCode6, focusNode: focusNode6),
                 ],
               ),
               SizedBox(height: 20),
@@ -189,7 +261,8 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
               SizedBox(height: 30),
               PrimaryButton(
                 text: AppStrings.verify,
-                onPressed: clickXacNhan,
+                onPressed: isLoading ? null : clickXacNhan,
+                isLoading: isLoading,
               ),
               SizedBox(height: 25),
               Text(
@@ -201,20 +274,30 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
               ),
               SizedBox(height: 10),
               GestureDetector(
-                onTap: clickGuiLaiMa,
+                onTap: isResending ? null : clickGuiLaiMa,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.refresh,
-                      size: 18,
-                      color: AppColors.primary,
-                    ),
+                    if (isResending)
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        ),
+                      )
+                    else
+                      Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
                     SizedBox(width: 8),
                     Text(
                       AppStrings.resendCode,
                       style: TextStyle(
-                        color: AppColors.primary,
+                        color: isResending ? AppColors.textSecondary : AppColors.primary,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -234,7 +317,9 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: clickLienHeHoTro,
+                    onTap: () {
+                      DialogHandler.showInfo("Liên hệ: support@hangt1.com");
+                    },
                     child: Text(
                       AppStrings.contactSupport,
                       style: TextStyle(

@@ -22,9 +22,9 @@ class ValidationHandler {
     return name.trim().isNotEmpty && name.length >= 2;
   }
 
-  /// Kiểm tra mã OTP có đủ 4 số không
+  /// Kiểm tra mã OTP có đủ 6 số không (BE API yêu cầu len=6)
   static bool isValidOTP(String otp) {
-    return otp.length == 4 && int.tryParse(otp) != null;
+    return otp.length == 6 && int.tryParse(otp) != null; // Đổi từ 4 -> 6
   }
 
   /// Trả về thông báo lỗi cho email

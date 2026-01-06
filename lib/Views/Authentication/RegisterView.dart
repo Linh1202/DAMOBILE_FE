@@ -20,6 +20,7 @@ class _RegisterViewState extends State<RegisterView> {
   TextEditingController txtEmail = TextEditingController();
   TextEditingController txtPassword = TextEditingController();
   TextEditingController txtConfirmPassword = TextEditingController();
+  TextEditingController txtPhoneNumber = TextEditingController();
 
   GlobalKey<FormState> formKey = GlobalKey<FormState>();
   AuthService authService = AuthService();

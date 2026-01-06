@@ -9,9 +9,18 @@ class AuthResponse {
     required this.user,
   });
 
-  factory AuthResponse.fromJson(Map<String, dynamic> json) {
-    String token = json['accessToken'] ?? json['access_token'] ?? json['token'] ?? '';
-    var userJson = json['user'] ?? json['data'] ?? {};
+  // Sửa để xử lý dynamic type từ JSON
+  factory AuthResponse.fromJson(dynamic json) {
+    final Map<String, dynamic> data = json is Map<String, dynamic> 
+        ? json 
+        : Map<String, dynamic>.from(json as Map);
+    
+    String token = data['accessToken']?.toString() ?? 
+                   data['access_token']?.toString() ?? 
+                   data['token']?.toString() ?? '';
+    
+    var userJson = data['user'] ?? data['data'] ?? {};
+    
     return AuthResponse(
       token: token,
       user: User.fromJson(userJson),

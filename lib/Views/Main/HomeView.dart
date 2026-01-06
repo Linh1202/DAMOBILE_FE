@@ -2,10 +2,11 @@ import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Services/WebRTCService.dart';
 import 'package:doanmobile/Views/Main/CallView.dart';
+import 'package:doanmobile/Views/Chat/ChatDetailView.dart';
+import 'package:doanmobile/Widgets/Chat/ChatListItem.dart';
 import 'package:doanmobile/Utils/AppGlobals.dart';
 import 'package:doanmobile/Utils/Constants/AppEnums.dart';
 import 'package:doanmobile/Utils/Constants/AppColors.dart';
-import 'package:doanmobile/Utils/Constants/AppStrings.dart';
 import 'package:flutter/material.dart';
 
 class HomeView extends StatefulWidget {
@@ -120,32 +121,26 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  static const List<Widget> widgetOptions = <Widget>[
-    Center(
-      child: Text(
-        'Trang chủ',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  static List<Widget> _buildWidgetOptions() {
+    return <Widget>[
+      // Tab 0: Chat - Sử dụng ChatListView (không có AppBar riêng)
+      _ChatListBody(),
+      // Tab 1: Bạn bè
+      const Center(
+        child: Text(
+          'Bạn bè',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
       ),
-    ),
-    Center(
-      child: Text(
-        'Tin nhắn',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      // Tab 2: Cài đặt
+      const Center(
+        child: Text(
+          'Cài đặt',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
       ),
-    ),
-    Center(
-      child: Text(
-        'Thông báo',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-      ),
-    ),
-    Center(
-      child: Text(
-        'Cá nhân',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-      ),
-    ),
-  ];
+    ];
+  }
 
   void onItemTapped(int index) {
     setState(() {
@@ -162,42 +157,88 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
+  // Lấy tiêu đề theo tab hiện tại
+  String _getTitle() {
+    switch (selectedIndex) {
+      case 0:
+        return "Tin nhắn";
+      case 1:
+        return "Bạn bè";
+      case 2:
+        return "Cài đặt";
+      default:
+        return "Tin nhắn";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final widgetOptions = _buildWidgetOptions();
+    
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              AppStrings.appName,
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (AppGlobals.userName.isNotEmpty)
-              Text(
-                "Chào, ${AppGlobals.userName}",
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-              ),
-          ],
+        automaticallyImplyLeading: false,
+        title: Text(
+          _getTitle(),
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
+          // Nút 1: Tìm kiếm
           IconButton(
             icon: Icon(Icons.search, color: AppColors.textPrimary),
             onPressed: () {
-              // Xử lý tìm kiếm
+              // TODO: Xử lý tìm kiếm
             },
           ),
+          // Nút 2: Thông báo với badge
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+                onPressed: () {
+                  // TODO: Xử lý thông báo
+                },
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    '2',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Nút 3: Tạo nhóm
           IconButton(
-            icon: Icon(Icons.logout, color: AppColors.textPrimary),
-            onPressed: clickLogout,
+            icon: Icon(Icons.group_add_outlined, color: AppColors.textPrimary),
+            onPressed: () {
+              // TODO: Xử lý tạo nhóm
+            },
           ),
         ],
       ),
@@ -207,26 +248,82 @@ class _HomeViewState extends State<HomeView> {
           border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
         ),
         child: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Trang chủ',
-            ),
+          items: <BottomNavigationBarItem>[
+            // Tab Chat
             BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline),
               activeIcon: Icon(Icons.chat_bubble),
-              label: 'Tin nhắn',
+              label: 'Chat',
             ),
+            // Tab Bạn bè với badge
             BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_outlined),
-              activeIcon: Icon(Icons.notifications),
-              label: 'Thông báo',
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(Icons.people_outline),
+                  Positioned(
+                    right: -6,
+                    top: -3,
+                    child: Container(
+                      padding: EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '2',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              activeIcon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(Icons.people),
+                  Positioned(
+                    right: -6,
+                    top: -3,
+                    child: Container(
+                      padding: EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '2',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              label: 'Bạn bè',
             ),
+            // Tab Cài đặt
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Cá nhân',
+              icon: Icon(Icons.settings_outlined),
+              activeIcon: Icon(Icons.settings),
+              label: 'Cài đặt',
             ),
           ],
           currentIndex: selectedIndex,
@@ -246,6 +343,77 @@ class _HomeViewState extends State<HomeView> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Widget hiển thị danh sách chat (không có AppBar riêng)
+class _ChatListBody extends StatelessWidget {
+  final List<Map<String, dynamic>> _conversations = [
+    {
+      "name": "Minh Anh",
+      "avatarUrl": "Assets/Images/anh1.png",
+      "content": "Chiều nay đi cafe nhé!",
+      "updatedAt": "10:30",
+      "unreadCount": 2,
+      "type": "private",
+    },
+    {
+      "name": "Team Dev Frontend",
+      "avatarUrl": "Assets/Images/anh1.png",
+      "content": "Đức Anh: Meeting lúc 2h nhé mọi người",
+      "updatedAt": "Hôm qua",
+      "unreadCount": 5,
+      "type": "group",
+    },
+    {
+      "name": "Hương Giang",
+      "avatarUrl": "Assets/Images/anh1.png",
+      "content": "Ok, hẹn gặp lại!",
+      "updatedAt": "2 ngày trước",
+      "unreadCount": 0,
+      "type": "private",
+    },
+    {
+      "name": "Nhóm Gia Đình",
+      "avatarUrl": "Assets/Images/anh1.png",
+      "content": "Chủ nhật đi ăn nhé!",
+      "updatedAt": "3 ngày trước",
+      "unreadCount": 0,
+      "type": "group",
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      itemCount: _conversations.length,
+      itemBuilder: (context, index) {
+        final conversation = _conversations[index];
+        final bool isGroup = conversation["type"] == "group";
+        return ChatListItem(
+          name: conversation["name"],
+          avatarUrl: conversation["avatarUrl"],
+          content: conversation["content"],
+          updatedAt: conversation["updatedAt"],
+          unreadCount: conversation["unreadCount"],
+          isGroup: isGroup,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatDetailView(
+                  name: conversation["name"],
+                  avatarUrl: conversation["avatarUrl"],
+                  isOnline: !isGroup,
+                  isGroup: isGroup,
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
