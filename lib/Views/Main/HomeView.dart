@@ -2,13 +2,11 @@ import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Services/WebRTCService.dart';
 import 'package:doanmobile/Views/Main/CallView.dart';
-import 'package:doanmobile/Views/Chat/ChatDetailView.dart';
-import 'package:doanmobile/Views/Group/CreateGroupView.dart';
 import 'package:doanmobile/Views/Friends/FriendsView.dart';
 import 'package:doanmobile/Views/Settings/SettingsView.dart';
-import 'package:doanmobile/Views/Search/SearchView.dart';
-import 'package:doanmobile/Views/Notifications/NotificationsView.dart';
-import 'package:doanmobile/Widgets/Chat/ChatListItem.dart';
+import 'package:doanmobile/Widgets/Main/HomeAppBar.dart';
+import 'package:doanmobile/Widgets/Main/HomeBottomNavigationBar.dart';
+import 'package:doanmobile/Widgets/Main/ChatList.dart';
 import 'package:doanmobile/Utils/AppGlobals.dart';
 import 'package:doanmobile/Utils/Constants/AppEnums.dart';
 import 'package:doanmobile/Utils/Constants/AppColors.dart';
@@ -127,14 +125,7 @@ class _HomeViewState extends State<HomeView> {
   }
 
   static List<Widget> _buildWidgetOptions() {
-    return <Widget>[
-      // Tab 0: Chat - Sử dụng ChatListView (không có AppBar riêng)
-      _ChatListBody(),
-      // Tab 1: Bạn bè
-      FriendsView(),
-      // Tab 2: Cài đặt
-      SettingsView(),
-    ];
+    return <Widget>[ChatList(), FriendsView(), SettingsView()];
   }
 
   void onItemTapped(int index) {
@@ -152,7 +143,6 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
-  // Lấy tiêu đề theo tab hiện tại
   String _getTitle() {
     switch (selectedIndex) {
       case 0:
@@ -169,255 +159,15 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     final widgetOptions = _buildWidgetOptions();
-    
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        centerTitle: false,
-        automaticallyImplyLeading: false,
-        title: Text(
-          _getTitle(),
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          // Nút 1: Tìm kiếm
-          IconButton(
-            icon: Icon(Icons.search, color: AppColors.textPrimary),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SearchView()),
-              );
-            },
-          ),
-          // Nút 2: Thông báo với badge
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NotificationsView()),
-                  );
-                },
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: Text(
-                    '2',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // Nút 3: Tạo nhóm
-          IconButton(
-            icon: Icon(Icons.group_add_outlined, color: AppColors.textPrimary),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CreateGroupView()),
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: HomeAppBar(title: _getTitle()),
       body: widgetOptions.elementAt(selectedIndex),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
-        ),
-        child: BottomNavigationBar(
-          items: <BottomNavigationBarItem>[
-            // Tab Chat
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              activeIcon: Icon(Icons.chat_bubble),
-              label: 'Chat',
-            ),
-            // Tab Bạn bè với badge
-            BottomNavigationBarItem(
-              icon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(Icons.people_outline),
-                  Positioned(
-                    right: -6,
-                    top: -3,
-                    child: Container(
-                      padding: EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: BoxConstraints(
-                        minWidth: 14,
-                        minHeight: 14,
-                      ),
-                      child: Text(
-                        '2',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              activeIcon: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(Icons.people),
-                  Positioned(
-                    right: -6,
-                    top: -3,
-                    child: Container(
-                      padding: EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: BoxConstraints(
-                        minWidth: 14,
-                        minHeight: 14,
-                      ),
-                      child: Text(
-                        '2',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              label: 'Bạn bè',
-            ),
-            // Tab Cài đặt
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: 'Cài đặt',
-            ),
-          ],
-          currentIndex: selectedIndex,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.iconGrey,
-          onTap: onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: AppColors.background,
-          elevation: 0,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-        ),
+      bottomNavigationBar: HomeBottomNavigationBar(
+        currentIndex: selectedIndex,
+        onTap: onItemTapped,
       ),
-    );
-  }
-}
-
-// Widget hiển thị danh sách chat (không có AppBar riêng)
-class _ChatListBody extends StatelessWidget {
-  final List<Map<String, dynamic>> _conversations = [
-    {
-      "name": "Minh Anh",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "content": "Chiều nay đi cafe nhé!",
-      "updatedAt": "10:30",
-      "unreadCount": 2,
-      "type": "private",
-    },
-    {
-      "name": "Team Dev Frontend",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "content": "Đức Anh: Meeting lúc 2h nhé mọi người",
-      "updatedAt": "Hôm qua",
-      "unreadCount": 5,
-      "type": "group",
-    },
-    {
-      "name": "Hương Giang",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "content": "Ok, hẹn gặp lại!",
-      "updatedAt": "2 ngày trước",
-      "unreadCount": 0,
-      "type": "private",
-    },
-    {
-      "name": "Nhóm Gia Đình",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "content": "Chủ nhật đi ăn nhé!",
-      "updatedAt": "3 ngày trước",
-      "unreadCount": 0,
-      "type": "group",
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      itemCount: _conversations.length,
-      itemBuilder: (context, index) {
-        final conversation = _conversations[index];
-        final bool isGroup = conversation["type"] == "group";
-        return ChatListItem(
-          name: conversation["name"],
-          avatarUrl: conversation["avatarUrl"],
-          content: conversation["content"],
-          updatedAt: conversation["updatedAt"],
-          unreadCount: conversation["unreadCount"],
-          isGroup: isGroup,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatDetailView(
-                  name: conversation["name"],
-                  avatarUrl: conversation["avatarUrl"],
-                  isOnline: !isGroup,
-                  isGroup: isGroup,
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }
