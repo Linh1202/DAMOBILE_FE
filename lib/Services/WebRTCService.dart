@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'SocketService.dart';
 import '../Utils/Constants/AppEnums.dart';
+import '../Utils/Constants/AppStrings.dart';
 
 class WebRTCService {
   static final WebRTCService instance = WebRTCService._internal();
@@ -20,6 +21,12 @@ class WebRTCService {
       {'urls': 'stun:stun.l.google.com:19302'},
       {'urls': 'stun:stun1.l.google.com:19302'},
       {'urls': 'stun:stun2.l.google.com:19302'},
+      if (AppStrings.turnUrl.isNotEmpty)
+        {
+          'urls': AppStrings.turnUrl,
+          'username': AppStrings.turnUsername,
+          'credential': AppStrings.turnPassword,
+        },
     ],
     'sdpSemantics': 'unified-plan',
   };

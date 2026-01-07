@@ -2,7 +2,8 @@ class AppStrings {
   static const String appName = "Hang T1";
 
   static const String welcomeTitle = "Chào mừng đến với";
-  static const String welcomeSubtitle = "Kết nối với bạn bè và gia đình mọi lúc, mọi nơi một cách dễ dàng và bảo mật.";
+  static const String welcomeSubtitle =
+      "Kết nối với bạn bè và gia đình mọi lúc, mọi nơi một cách dễ dàng và bảo mật.";
   static const String registerFree = "Đăng ký miễn phí";
 
   static const String loginTitle = "Chào mừng đến với hang T1";
@@ -28,7 +29,8 @@ class AppStrings {
   static const String namePlaceholder = "Nguyễn Văn A";
 
   static const String forgotPasswordTitle = "Quên mật khẩu?";
-  static const String forgotPasswordSubtitle = "Nhập email của bạn để nhận mã xác thực đặt lại mật khẩu.";
+  static const String forgotPasswordSubtitle =
+      "Nhập email của bạn để nhận mã xác thực đặt lại mật khẩu.";
   static const String sendCode = "Gửi mã xác thực";
 
   static const String verifyCodeTitle = "Nhập mã xác thực";
@@ -37,12 +39,14 @@ class AppStrings {
   static const String resendCode = "Gửi lại mã mới";
 
   static const String resetPasswordTitle = "Đặt lại mật khẩu";
-  static const String resetPasswordSubtitle = "Mật khẩu mới của bạn phải khác với mật khẩu đã sử dụng trước đó.";
+  static const String resetPasswordSubtitle =
+      "Mật khẩu mới của bạn phải khác với mật khẩu đã sử dụng trước đó.";
   static const String resetPassword = "Đặt lại mật khẩu";
   static const String backToLogin = "Quay lại đăng nhập";
 
   static const String successTitle = "Thành công!";
-  static const String passwordResetSuccess = "Mật khẩu đã được đặt lại thành công!";
+  static const String passwordResetSuccess =
+      "Mật khẩu đã được đặt lại thành công!";
 
   static const String orContinueWith = "Hoặc tiếp tục với";
   static const String orRegisterWith = "Hoặc đăng ký bằng";
@@ -54,5 +58,23 @@ class AppStrings {
   // Production: https://damobilebe-production.up.railway.app/api
   // Local: http://localhost:8080/api (hoặc 10.0.2.2:8080 cho Android Emulator)
   // static const String baseUrl = "http://localhost:8080/api";
-  static const String baseUrl = "https://damobilebe-production.up.railway.app/api";
+  static const String baseUrl = String.fromEnvironment(
+    'BASE_URL',
+    defaultValue: "https://damobilebe-production.up.railway.app/api",
+  );
+
+  // WebRTC Configuration
+  static const String turnUrl = String.fromEnvironment(
+    'TURN_URL',
+    defaultValue:
+        'stun:stun.cloudflare.com:3478,turn:turn.cloudflare.com:3478?transport=udp,turn:turn.cloudflare.com:3478?transport=tcp,turns:turn.cloudflare.com:5349?transport=tcp',
+  );
+  static const String turnUsername = String.fromEnvironment(
+    'TURN_USERNAME',
+    defaultValue: '',
+  );
+  static const String turnPassword = String.fromEnvironment(
+    'TURN_PASSWORD',
+    defaultValue: '',
+  );
 }
