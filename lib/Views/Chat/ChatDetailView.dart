@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:doanmobile/Providers/SocketProvider.dart';
 import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/ChatService.dart';
-import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Models/Message.dart';
 import 'package:doanmobile/Models/Api/SocketMessage.dart';
 import 'package:doanmobile/Utils/Constants/AppColors.dart';
@@ -11,8 +12,9 @@ import 'package:doanmobile/Utils/Handlers/NavigationHandler.dart';
 import 'package:doanmobile/Widgets/Chat/MessageBubble.dart';
 import 'package:doanmobile/Widgets/Chat/ChatInputBar.dart';
 import 'package:doanmobile/Widgets/Avatars/UserAvatar.dart';
+import 'package:doanmobile/Views/Main/CallView.dart';
 
-class ChatDetailView extends StatefulWidget {
+class ChatDetailView extends ConsumerStatefulWidget {
   final String chatId;
   final String name;
   final String avatarUrl;
@@ -32,18 +34,17 @@ class ChatDetailView extends StatefulWidget {
   _ChatDetailViewState createState() => _ChatDetailViewState();
 }
 
-class _ChatDetailViewState extends State<ChatDetailView> {
+class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
-  final SocketService _socketService = SocketService.instance;
 
   List<Message> _messages = [];
   String _currentUserId = "";
+  String? _targetUserId;
   bool _isLoading = true;
   bool _isTyping = false;
   String? _typingUser;
-  StreamSubscription<SocketMessage>? _socketSubscription;
 
   @override
   void initState() {
@@ -56,7 +57,22 @@ class _ChatDetailViewState extends State<ChatDetailView> {
     final user = await AuthStorage.readUser();
     _currentUserId = user?['id']?.toString() ?? user?['_id']?.toString() ?? "";
 
-    // Load message history from API
+    if (!widget.isGroup) {
+      try {
+        final chat = await _chatService.getChatById(widget.chatId);
+        if (mounted) {
+          setState(() {
+            _targetUserId = chat.participants.firstWhere(
+              (id) => id != _currentUserId,
+              orElse: () => "",
+            );
+          });
+        }
+      } catch (e) {
+        print("Error fetching chat details: $e");
+      }
+    }
+
     try {
       final messages = await _chatService.getMessages(widget.chatId);
       if (mounted) {
@@ -73,10 +89,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
     }
 
     // Join room via WebSocket
-    _socketService.joinRoom(widget.chatId);
-
-    // Listen for incoming messages
-    _socketSubscription = _socketService.messageStream.listen(_handleSocketMessage);
+    ref.read(socketServiceProvider).joinRoom(widget.chatId);
   }
 
   void _handleSocketMessage(SocketMessage message) {
@@ -169,7 +182,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
     });
 
     // Send via WebSocket
-    _socketService.sendChatMessage(widget.chatId, text);
+    ref.read(socketServiceProvider).sendChatMessage(widget.chatId, text);
 
     _messageController.clear();
     _scrollToBottom();
@@ -188,7 +201,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
   }
 
   void _onTyping() {
-    _socketService.sendTyping(widget.chatId);
+    ref.read(socketServiceProvider).sendTyping(widget.chatId);
   }
 
   bool _isMine(String senderId) {
@@ -197,6 +210,11 @@ class _ChatDetailViewState extends State<ChatDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for incoming messages reactively
+    ref.listen(socketMessageStreamProvider, (previous, next) {
+      next.whenData(_handleSocketMessage);
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
@@ -332,7 +350,31 @@ class _ChatDetailViewState extends State<ChatDetailView> {
         IconButton(
           icon: Icon(Icons.videocam_outlined, color: AppColors.textPrimary),
           onPressed: () {
-            // TODO: Video call
+            if (widget.isGroup) {
+              // Group call
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CallView(
+                    targetUserId: widget.chatId,
+                    userName: widget.name,
+                    isIncoming: false,
+                  ),
+                ),
+              );
+            } else if (_targetUserId != null && _targetUserId!.isNotEmpty) {
+              // Direct call
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CallView(
+                    targetUserId: _targetUserId,
+                    userName: widget.name,
+                    isIncoming: false,
+                  ),
+                ),
+              );
+            }
           },
         ),
         IconButton(
@@ -348,8 +390,7 @@ class _ChatDetailViewState extends State<ChatDetailView> {
   @override
   void dispose() {
     // Leave room when closing chat
-    _socketService.leaveRoom(widget.chatId);
-    _socketSubscription?.cancel();
+    ref.read(socketServiceProvider).leaveRoom(widget.chatId);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();

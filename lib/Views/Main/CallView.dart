@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../Providers/CallProvider.dart';
 import '../../Services/WebRTCService.dart';
 
-class CallView extends StatefulWidget {
+class CallView extends ConsumerStatefulWidget {
   final String? targetUserId;
   final String? userName;
   final bool isIncoming;
@@ -16,10 +18,10 @@ class CallView extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CallView> createState() => _CallViewState();
+  ConsumerState<CallView> createState() => _CallViewState();
 }
 
-class _CallViewState extends State<CallView> {
+class _CallViewState extends ConsumerState<CallView> {
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   bool _isMicOff = false;
@@ -70,8 +72,8 @@ class _CallViewState extends State<CallView> {
     super.dispose();
   }
 
-  void _hangUp() async {
-    await WebRTCService.instance.endCall(widget.targetUserId);
+  void _hangUp() {
+    ref.read(callProvider.notifier).endCall();
   }
 
   void _toggleMic() {

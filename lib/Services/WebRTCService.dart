@@ -11,6 +11,9 @@ class WebRTCService {
 
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
+  MediaStream? _remoteStream;
+  final List<RTCIceCandidate> _remoteIceCandidatesBuffer = [];
+  bool _isRemoteDescriptionSet = false;
 
   String? _currentTargetId;
   String? _currentRoomId;
@@ -18,25 +21,41 @@ class WebRTCService {
 
   Map<String, dynamic> get _configuration => {
     'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'stun:stun1.l.google.com:19302'},
-      {'urls': 'stun:stun2.l.google.com:19302'},
-      if (AppStrings.turnUrl.isNotEmpty)
-        {
-          'urls': AppStrings.turnUrl
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList(),
-          'username': AppStrings.turnUsername,
-          'credential': AppStrings.turnPassword,
-        },
+      {
+        'urls': [
+          'stun:stun.cloudflare.com:3478',
+          'turn:turn.cloudflare.com:3478?transport=udp',
+          'turn:turn.cloudflare.com:3478?transport=tcp',
+          'turns:turn.cloudflare.com:5349?transport=tcp',
+        ],
+        'username': AppStrings.turnUsername,
+        'credential': AppStrings.turnPassword,
+      },
     ],
-    'sdpSemantics': 'unified-plan',
   };
 
-  Function(MediaStream stream)? onLocalStream;
-  Function(MediaStream stream)? onRemoteStream;
+  Function(MediaStream stream)? _onLocalStreamCallback;
+
+  set onLocalStream(Function(MediaStream stream)? callback) {
+    _onLocalStreamCallback = callback;
+    if (callback != null && _localStream != null) {
+      callback(_localStream!);
+    }
+  }
+
+  Function(MediaStream stream)? get onLocalStream => _onLocalStreamCallback;
+
+  Function(MediaStream stream)? _onRemoteStreamCallback;
+
+  set onRemoteStream(Function(MediaStream stream)? callback) {
+    _onRemoteStreamCallback = callback;
+    if (callback != null && _remoteStream != null) {
+      callback(_remoteStream!);
+    }
+  }
+
+  Function(MediaStream stream)? get onRemoteStream => _onRemoteStreamCallback;
+
   Function(RTCSignalingState state)? onSignalingStateChange;
   Function(RTCPeerConnectionState state)? onConnectionStateChange;
   Function()? onCallEnd;
@@ -45,24 +64,33 @@ class WebRTCService {
     if (_peerConnection != null) return;
 
     try {
-      var config = _configuration;
+      final config = _configuration;
+
       _peerConnection = await createPeerConnection(config);
 
-      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
-        _sendSignalingMessage(
-          type: SignalingType.iceCandidate,
-          payload: {
-            'candidate': candidate.candidate,
-            'sdpMid': candidate.sdpMid,
-            'sdpMLineIndex': candidate.sdpMLineIndex,
-          },
-        );
+      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) async {
+        if (candidate.candidate != null) {
+          await _sendSignalingMessage(
+            type: SignalingType.iceCandidate,
+            payload: {
+              'candidate': candidate.candidate,
+              'sdpMid': candidate.sdpMid,
+              'sdpMLineIndex': candidate.sdpMLineIndex,
+            },
+          );
+        }
       };
 
       _peerConnection!.onTrack = (RTCTrackEvent event) {
         if (event.streams.isNotEmpty) {
-          onRemoteStream?.call(event.streams[0]);
+          _remoteStream = event.streams[0];
+          _onRemoteStreamCallback?.call(_remoteStream!);
         }
+      };
+
+      _peerConnection!.onAddStream = (MediaStream stream) {
+        _remoteStream = stream;
+        _onRemoteStreamCallback?.call(_remoteStream!);
       };
 
       _peerConnection!.onSignalingState = (state) {
@@ -72,34 +100,10 @@ class WebRTCService {
       _peerConnection!.onConnectionState = (state) {
         onConnectionStateChange?.call(state);
       };
+
+      _peerConnection!.onIceConnectionState = (state) {};
     } catch (e) {
       rethrow;
-    }
-  }
-
-  void _sendSignalingMessage({
-    required SignalingType type,
-    dynamic payload,
-    String? overrideTargetId,
-    String? overrideRoomId,
-    bool? overrideIsRoom,
-  }) {
-    final isRoom = overrideIsRoom ?? _isRoomCall;
-    final roomId = overrideRoomId ?? _currentRoomId;
-    final targetId = overrideTargetId ?? _currentTargetId;
-
-    if (isRoom && roomId != null) {
-      SocketService.instance.sendRoomCall(
-        roomId: roomId,
-        type: type,
-        payload: payload,
-      );
-    } else if (targetId != null) {
-      SocketService.instance.sendDirectCall(
-        targetUserId: targetId,
-        type: type,
-        payload: payload,
-      );
     }
   }
 
@@ -109,18 +113,24 @@ class WebRTCService {
     try {
       _localStream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
-        'video': {'facingMode': 'user'},
+        'video': {
+          'facingMode': 'user',
+          'width': {'ideal': 1280},
+          'height': {'ideal': 720},
+        },
       });
 
-      onLocalStream?.call(_localStream!);
-
-      if (_peerConnection != null) {
-        _localStream!.getTracks().forEach((track) {
-          _peerConnection!.addTrack(track, _localStream!);
-        });
-      }
+      _onLocalStreamCallback?.call(_localStream!);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> _addTracksToConnection() async {
+    if (_localStream == null || _peerConnection == null) return;
+
+    for (var track in _localStream!.getTracks()) {
+      _peerConnection!.addTrack(track, _localStream!);
     }
   }
 
@@ -132,22 +142,16 @@ class WebRTCService {
 
       await _setupLocalMedia();
       await _initPeerConnection();
-
-      if (_localStream != null && _peerConnection != null) {
-        for (var track in _localStream!.getTracks()) {
-          _peerConnection!.addTrack(track, _localStream!);
-        }
-      }
+      await _addTracksToConnection();
 
       RTCSessionDescription offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
 
-      _sendSignalingMessage(
+      await _sendSignalingMessage(
         type: SignalingType.offer,
         payload: {'sdp': offer.sdp, 'type': offer.type},
       );
     } catch (e) {
-      print("Lỗi bắt đầu cuộc gọi trực tiếp: $e");
       await endCall();
     }
   }
@@ -160,26 +164,18 @@ class WebRTCService {
 
       SocketService.instance.joinRoom(roomId);
 
-      // Fix: getUserMedia before PeerConnection to avoid native crash on Android
       await _setupLocalMedia();
       await _initPeerConnection();
-
-      // Ensure tracks are added to the peer connection
-      if (_localStream != null && _peerConnection != null) {
-        for (var track in _localStream!.getTracks()) {
-          _peerConnection!.addTrack(track, _localStream!);
-        }
-      }
+      await _addTracksToConnection();
 
       RTCSessionDescription offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
 
-      _sendSignalingMessage(
+      await _sendSignalingMessage(
         type: SignalingType.offer,
         payload: {'sdp': offer.sdp, 'type': offer.type},
       );
     } catch (e) {
-      print("Lỗi bắt đầu cuộc gọi nhóm: $e");
       await endCall();
     }
   }
@@ -199,88 +195,156 @@ class WebRTCService {
         SocketService.instance.joinRoom(roomId);
       }
 
-      // Fix: getUserMedia before PeerConnection to avoid native crash on Android
       await _setupLocalMedia();
       await _initPeerConnection();
-
-      // Ensure tracks are added to the peer connection
-      if (_localStream != null && _peerConnection != null) {
-        for (var track in _localStream!.getTracks()) {
-          _peerConnection!.addTrack(track, _localStream!);
-        }
-      }
+      await _addTracksToConnection();
 
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(sdpData['sdp'], sdpData['type']),
       );
+      _isRemoteDescriptionSet = true;
+      await _processRemoteIceCandidates();
 
       RTCSessionDescription answer = await _peerConnection!.createAnswer();
       await _peerConnection!.setLocalDescription(answer);
 
-      _sendSignalingMessage(
+      await _sendSignalingMessage(
         type: SignalingType.answer,
         payload: {'sdp': answer.sdp, 'type': answer.type},
       );
     } catch (e) {
-      print("Lỗi xử lý offer: $e");
       await endCall();
     }
   }
 
   Future<void> handleAnswer(Map<String, dynamic> sdpData) async {
     if (_peerConnection == null) return;
+
+    final state = _peerConnection!.signalingState;
+    if (state != RTCSignalingState.RTCSignalingStateHaveLocalOffer) {
+      return;
+    }
+
     try {
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(sdpData['sdp'], sdpData['type']),
       );
+      _isRemoteDescriptionSet = true;
+      await _processRemoteIceCandidates();
     } catch (e) {
-      print("Lỗi xử lý answer: $e");
+      print("WebRTC: handleAnswer failed: $e");
     }
   }
 
   Future<void> handleIceCandidate(Map<String, dynamic> data) async {
-    if (_peerConnection == null) return;
+    final candidate = RTCIceCandidate(
+      data['candidate'],
+      data['sdpMid'],
+      data['sdpMLineIndex'],
+    );
+
+    if (_peerConnection == null ||
+        !_isRemoteDescriptionSet ||
+        _peerConnection!.signalingState == RTCSignalingState.RTCSignalingStateClosed) {
+      _remoteIceCandidatesBuffer.add(candidate);
+      return;
+    }
+
     try {
-      await _peerConnection!.addCandidate(
-        RTCIceCandidate(
-          data['candidate'],
-          data['sdpMid'],
-          data['sdpMLineIndex'],
-        ),
-      );
+      print("WebRTC: Adding remote ICE candidate");
+      await _peerConnection!.addCandidate(candidate);
     } catch (e) {
-      print("Lỗi thêm ICE candidate: $e");
+      print("WebRTC: handleIceCandidate failed: $e");
     }
   }
 
-  /// Ends the current call or rejects an incoming one if targetUserId is provided
+  Future<void> _processRemoteIceCandidates() async {
+    if (_peerConnection == null || _remoteIceCandidatesBuffer.isEmpty) return;
+    print("WebRTC: Processing ${_remoteIceCandidatesBuffer.length} buffered ICE candidates");
+    for (var candidate in List.from(_remoteIceCandidatesBuffer)) {
+      try {
+        await _peerConnection!.addCandidate(candidate);
+      } catch (e) {
+        print("WebRTC: Error adding buffered candidate: $e");
+      }
+    }
+    _remoteIceCandidatesBuffer.clear();
+  }
+
   Future<void> endCall([String? targetUserId]) async {
     try {
+      print("WebRTC: Terminating call");
       if (targetUserId != null) {
-        _sendSignalingMessage(
+        await _sendSignalingMessage(
           type: SignalingType.end,
           overrideTargetId: targetUserId,
           overrideIsRoom: false,
         );
       } else {
-        _sendSignalingMessage(type: SignalingType.end);
+        await _sendSignalingMessage(type: SignalingType.end);
+      }
+    
+
+      // Dispose local media
+      if (_localStream != null) {
+        for (var track in _localStream!.getTracks()) {
+          track.stop();
+        }
+        await _localStream!.dispose();
+        _localStream = null;
       }
 
-      _localStream?.getTracks().forEach((track) => track.stop());
-      await _localStream?.dispose();
-      _localStream = null;
+      // Dispose remote media
+      if (_remoteStream != null) {
+        for (var track in _remoteStream!.getTracks()) {
+          track.stop();
+        }
+        await _remoteStream!.dispose();
+        _remoteStream = null;
+      }
 
-      await _peerConnection?.close();
-      await _peerConnection?.dispose();
-      _peerConnection = null;
+      // Dispose peer connection
+      if (_peerConnection != null) {
+        await _peerConnection!.close();
+        await _peerConnection!.dispose();
+        _peerConnection = null;
+      }
 
       _currentTargetId = null;
       _currentRoomId = null;
       _isRoomCall = false;
+      _isRemoteDescriptionSet = false;
+      _remoteIceCandidatesBuffer.clear();
 
       onCallEnd?.call();
     } catch (e) {
-      print("Lỗi kết thúc cuộc gọi: $e");
+      print("WebRTC: endCall error: $e");
+    }
+  }
+
+  Future<void> _sendSignalingMessage({
+    required SignalingType type,
+    dynamic payload,
+    String? overrideTargetId,
+    String? overrideRoomId,
+    bool? overrideIsRoom,
+  }) async {
+    final isRoom = overrideIsRoom ?? _isRoomCall;
+    final roomId = overrideRoomId ?? _currentRoomId;
+    final targetId = overrideTargetId ?? _currentTargetId;
+
+    if (isRoom && roomId != null) {
+      SocketService.instance.sendRoomCall(
+        roomId: roomId,
+        type: type,
+        payload: payload,
+      );
+    } else if (targetId != null) {
+      SocketService.instance.sendDirectCall(
+        targetUserId: targetId,
+        type: type,
+        payload: payload,
+      );
     }
   }
 

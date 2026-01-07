@@ -1,4 +1,7 @@
 import 'package:doanmobile/Services/AuthStorage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:doanmobile/Providers/SocketProvider.dart';
+import 'package:doanmobile/Providers/CallProvider.dart';
 import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Services/WebRTCService.dart';
 import 'package:doanmobile/Views/Main/CallView.dart';
@@ -12,62 +15,39 @@ import 'package:doanmobile/Utils/Constants/AppEnums.dart';
 import 'package:doanmobile/Utils/Constants/AppColors.dart';
 import 'package:flutter/material.dart';
 
-class HomeView extends StatefulWidget {
+class HomeView extends ConsumerStatefulWidget {
   const HomeView({Key? key}) : super(key: key);
 
   @override
-  State<HomeView> createState() => _HomeViewState();
+  ConsumerState<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView> {
+class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver {
   int selectedIndex = 0;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     selectedIndex = AppGlobals.itemBarIndex;
-    SocketService.instance.connect();
-    _listenForCalls();
+    
+    // Connect to socket via provider
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(socketServiceProvider).connect();
+    });
   }
 
-  void _listenForCalls() {
-    SocketService.instance.messageStream.listen((data) {
-      final msgType = data.type;
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-      if (msgType == MessageType.directCall || msgType == MessageType.call) {
-        final senderId = data.senderId;
-        final senderName = data.senderName;
-        final roomId = data.roomId;
-        final payload = data.payload;
-        if (payload == null || senderId == null) return;
-
-        final sigType = SignalingType.fromString(payload['type'] ?? "");
-        final innerPayload = payload['payload'];
-        final isRoom = msgType == MessageType.call;
-
-        switch (sigType) {
-          case SignalingType.offer:
-            _handleIncomingCall(
-              senderId: senderId,
-              senderName: senderName,
-              sdp: innerPayload,
-              isRoom: isRoom,
-              roomId: roomId,
-            );
-            break;
-          case SignalingType.answer:
-            WebRTCService.instance.handleAnswer(innerPayload);
-            break;
-          case SignalingType.iceCandidate:
-            WebRTCService.instance.handleIceCandidate(innerPayload);
-            break;
-          case SignalingType.end:
-            WebRTCService.instance.endCall();
-            break;
-          default:
-            break;
-        }
-      }
-    });
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(socketServiceProvider).connect();
+    }
   }
 
   void _handleIncomingCall({
@@ -90,13 +70,16 @@ class _HomeViewState extends State<HomeView> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              WebRTCService.instance.endCall(senderId);
+              ref.read(callProvider.notifier).rejectCall();
             },
             child: const Text("Từ chối", style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+              
+              ref.read(callProvider.notifier).acceptCall();
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -135,7 +118,9 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Future<void> clickLogout() async {
+    ref.read(socketServiceProvider).close();
     await AuthStorage.deleteToken();
+    await AuthStorage.deleteUser();
     if (mounted) {
       Navigator.of(
         context,
@@ -159,6 +144,19 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     final widgetOptions = _buildWidgetOptions();
+
+    ref.listen(callProvider, (previous, next) {
+      if (next.status == CallStatus.ringing && 
+          (previous == null || previous.status != CallStatus.ringing)) {
+        _handleIncomingCall(
+          senderId: next.callerId!,
+          senderName: next.callerName,
+          sdp: next.offerSdp!,
+          isRoom: next.isRoom,
+          roomId: next.roomId,
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.background,

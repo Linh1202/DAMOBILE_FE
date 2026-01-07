@@ -1,3 +1,5 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AppStrings {
   static const String appName = "Hang T1";
 
@@ -54,27 +56,17 @@ class AppStrings {
   static const String contactSupport = "Liên hệ hỗ trợ";
   static const String termsAndPolicy = "Điều khoản & Chính sách";
 
-  // ⚠️ ĐỔI THÀNH localhost:8080 KHI TEST LOCAL BE
-  // Production: https://damobilebe-production.up.railway.app/api
-  // Local: http://localhost:8080/api (hoặc 10.0.2.2:8080 cho Android Emulator)
-  // static const String baseUrl = "http://localhost:8080/api";
-  static const String baseUrl = String.fromEnvironment(
-    'BASE_URL',
-    defaultValue: "https://damobilebe-production.up.railway.app/api",
-  );
+  // Configuration handled via flutter_dotenv
+  static String get baseUrl => 
+      dotenv.env['BASE_URL'] ?? "https://damobilebe-production.up.railway.app/api";
 
   // WebRTC Configuration
-  static const String turnUrl = String.fromEnvironment(
-    'TURN_URL',
-    defaultValue:
-        'stun:stun.cloudflare.com:3478,turn:turn.cloudflare.com:3478?transport=udp,turn:turn.cloudflare.com:3478?transport=tcp,turns:turn.cloudflare.com:5349?transport=tcp',
-  );
-  static const String turnUsername = String.fromEnvironment(
-    'TURN_USERNAME',
-    defaultValue: '',
-  );
-  static const String turnPassword = String.fromEnvironment(
-    'TURN_PASSWORD',
-    defaultValue: '',
-  );
+  static String get turnUrl => 
+      dotenv.env['TURN_URL'] ?? 'stun:stun.cloudflare.com:3478,turn:turn.cloudflare.com:3478?transport=udp,turn:turn.cloudflare.com:3478?transport=tcp,turns:turn.cloudflare.com:5349?transport=tcp';
+  
+  static String get turnUsername => 
+      dotenv.env['TURN_USERNAME'] ?? '';
+      
+  static String get turnPassword => 
+      dotenv.env['TURN_PASSWORD'] ?? '';
 }

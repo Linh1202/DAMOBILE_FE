@@ -17,6 +17,7 @@ class SocketService {
   WebSocketChannel? _channel;
   bool _isConnected = false;
   bool _isConnecting = false;
+  StreamSubscription? _subscription;
   Timer? _reconnectTimer;
   int _retryCount = 0;
   final int _maxRetries = 5;
@@ -56,25 +57,49 @@ class SocketService {
     return base;
   }
 
+  Future<void> ensureConnected() async {
+    if (_isConnected) return;
+    if (!_isConnecting) {
+      await connect();
+    }
+    
+    int attempts = 0;
+    while (!_isConnected && attempts < 10) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      attempts++;
+    }
+  }
+
   Future<void> connect() async {
     if (_isConnected || _isConnecting) return;
     _isConnecting = true;
 
     final url = await _getWsUrl();
+    print("WebSocket: Connecting to $url...");
 
     try {
       _channel = IOWebSocketChannel.connect(
         Uri.parse(url),
-        pingInterval: const Duration(seconds: 10),
+        pingInterval: const Duration(seconds: 5),
       );
 
-      _channel!.stream.listen(
-        (message) {
-          _retryCount = 0;
+      _channel!.ready.then((_) {
+        if (!_isConnected) {
+          print("WebSocket: Connection established");
           _isConnected = true;
           _isConnecting = false;
+          _retryCount = 0;
           _cancelReconnectTimer();
+        }
+      }).catchError((e) {
+        _handleConnectionClosed("Lỗi khi thiết lập kết nối: $e");
+      });
 
+      await _subscription?.cancel();
+
+      _subscription = _channel!.stream.listen(
+        (message) {
+          print("WebSocket: Message received: $message");
           try {
             final decoded = jsonDecode(message);
             if (decoded is Map<String, dynamic>) {
@@ -104,9 +129,12 @@ class SocketService {
   }
 
   void _handleConnectionClosed(String reason) {
+    print("WebSocket: Connection closed ($reason)");
     _isConnected = false;
     _isConnecting = false;
     _channel = null;
+    _subscription?.cancel();
+    _subscription = null;
 
     _messageController.add(SocketMessage(
       type: MessageType.error,
@@ -146,7 +174,12 @@ class SocketService {
     _reconnectTimer = null;
   }
 
-  void sendMessage(SocketMessage message) {
+  Future<void> sendMessage(SocketMessage message) async {
+    if (!_isConnected) {
+      print("WebSocket: Not connected. Attempting to connect before sending message...");
+      await ensureConnected();
+    }
+
     if (_channel != null && _isConnected) {
       try {
         _channel!.sink.add(jsonEncode(message.toJson()));
@@ -154,6 +187,7 @@ class SocketService {
         _handleError("Không thể gửi tin nhắn: $e");
       }
     } else {
+      print("WebSocket: Failed to send message - still not connected after retry.");
       _handleError("Không có kết nối WebSocket.");
     }
   }
@@ -241,6 +275,8 @@ class SocketService {
 
   void close() {
     _cancelReconnectTimer();
+    _subscription?.cancel();
+    _subscription = null;
     _channel?.sink.close();
     _isConnected = false;
     _isConnecting = false;
