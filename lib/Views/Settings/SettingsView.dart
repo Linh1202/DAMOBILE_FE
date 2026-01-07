@@ -1,8 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../Utils/Constants/AppColors.dart';
 import '../../Utils/AppGlobals.dart';
 import '../../Services/AuthStorage.dart';
+import '../../Services/UserService.dart';
+import '../../Services/ApiService.dart';
+import '../../Utils/Constants/ApiEndpoints.dart';
+import '../../Models/User.dart';
 import '../../Widgets/Avatars/UserAvatar.dart';
+import 'ProfileView.dart';
 
 class SettingsView extends StatefulWidget {
   @override
@@ -10,11 +17,86 @@ class SettingsView extends StatefulWidget {
 }
 
 class _SettingsViewState extends State<SettingsView> {
+  final UserService _userService = UserService();
+  final ApiService _apiService = ApiService();
+  final ImagePicker _picker = ImagePicker();
+
+  User? _currentUser;
+  bool _isLoadingProfile = true;
   bool notificationsEnabled = true;
   String currentLanguage = "Tiếng Việt";
 
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final user = await _userService.getProfile();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          _isLoadingProfile = false;
+          AppGlobals.userName = user.fullName;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingProfile = false);
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đang tải ảnh lên...')),
+      );
+
+      final response = await _apiService.postMultipartWithAuth(
+        ApiEndpoints.uploadMedia,
+        image.path,
+      );
+
+      if (response['success'] == true && response['data'] != null) {
+        final avatarUrl = response['data']['url'];
+        
+        await _userService.updateProfile(avatarUrl: avatarUrl);
+        
+        await _loadProfile();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cập nhật ảnh đại diện thành công')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi khi cập nhật ảnh: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _navigateToProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ProfileView()),
+    );
+    
+    if (result == true) {
+      _loadProfile();
+    }
+  }
+
   Future<void> _logout() async {
-    // Hiển thị dialog xác nhận
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -60,9 +142,7 @@ class _SettingsViewState extends State<SettingsView> {
           _buildSettingItem(
             icon: Icons.camera_alt_outlined,
             title: "Thay đổi ảnh đại diện",
-            onTap: () {
-              // TODO: Chọn ảnh từ gallery
-            },
+            onTap: _pickAndUploadAvatar,
           ),
           _buildSettingItem(
             icon: Icons.lock_outline,
@@ -159,37 +239,46 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Widget _buildProfileSection() {
+    if (_isLoadingProfile) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Container(
       padding: EdgeInsets.all(16),
       child: Row(
         children: [
-          // Avatar với nút camera
           Stack(
             children: [
               UserAvatar(
-                imagePath: "Assets/Images/anh1.png",
-                name: AppGlobals.userName.isNotEmpty ? AppGlobals.userName : "Bạn",
+                imagePath: _currentUser?.avatarUrl,
+                name: _currentUser?.fullName ?? (AppGlobals.userName.isNotEmpty ? AppGlobals.userName : "Bạn"),
                 size: 64,
                 isOnline: true,
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.background,
-                      width: 2,
+                child: GestureDetector(
+                  onTap: _pickAndUploadAvatar,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.background,
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    Icons.camera_alt,
-                    color: Colors.white,
-                    size: 12,
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 12,
+                    ),
                   ),
                 ),
               ),
@@ -202,7 +291,7 @@ class _SettingsViewState extends State<SettingsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AppGlobals.userName.isNotEmpty ? AppGlobals.userName : "Bạn",
+                  _currentUser?.fullName ?? (AppGlobals.userName.isNotEmpty ? AppGlobals.userName : "Bạn"),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -211,9 +300,7 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
                 SizedBox(height: 4),
                 GestureDetector(
-                  onTap: () {
-                    // TODO: Mở màn hình xem hồ sơ
-                  },
+                  onTap: _navigateToProfile,
                   child: Text(
                     "Xem hồ sơ",
                     style: TextStyle(
