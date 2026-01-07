@@ -31,14 +31,22 @@ class UserAvatar extends StatelessWidget {
             color: AppColors.primaryLight,
           ),
           child: ClipOval(
-            child: imagePath != null
-                ? Image.asset(
-                    imagePath!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return _buildFallback();
-                    },
-                  )
+            child: imagePath != null && imagePath!.isNotEmpty
+                ? (imagePath!.startsWith('http')
+                    ? Image.network(
+                        imagePath!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return _buildFallback();
+                        },
+                      )
+                    : Image.asset(
+                        imagePath!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return _buildFallback();
+                        },
+                      ))
                 : _buildFallback(),
           ),
         ),
