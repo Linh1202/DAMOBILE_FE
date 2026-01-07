@@ -24,6 +24,7 @@ class _LoginViewState extends State<LoginView> {
 
   bool isLoading = false;
   bool obscurePassword = true;
+  bool _submitted = false;
 
   @override
   void dispose() {
@@ -34,6 +35,8 @@ class _LoginViewState extends State<LoginView> {
 
   Future<void> clickDangNhap() async {
     FocusScope.of(context).unfocus();
+
+    setState(() => _submitted = true);
 
     var form = formKey.currentState;
     if (form == null || !form.validate()) {
@@ -98,7 +101,9 @@ class _LoginViewState extends State<LoginView> {
           padding: EdgeInsets.symmetric(horizontal: 25),
           child: Form(
             key: formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
+            autovalidateMode: _submitted
+                ? AutovalidateMode.onUserInteraction
+                : AutovalidateMode.disabled,
             child: Column(
               children: [
                 SizedBox(height: 30),
@@ -150,7 +155,6 @@ class _LoginViewState extends State<LoginView> {
                   prefixIcon: Icons.mail_outline,
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) => ValidationHandler.getEmailError(v ?? ''),
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                 ),
@@ -178,7 +182,6 @@ class _LoginViewState extends State<LoginView> {
                   onSuffixIconTap: () =>
                       setState(() => obscurePassword = !obscurePassword),
                   validator: (v) => ValidationHandler.getPasswordError(v ?? ''),
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => clickDangNhap(),
                 ),

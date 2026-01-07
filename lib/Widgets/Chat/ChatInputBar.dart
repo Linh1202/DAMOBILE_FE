@@ -7,6 +7,7 @@ class ChatInputBar extends StatelessWidget {
   final VoidCallback onAttachment;
   final VoidCallback onEmoji;
   final VoidCallback onVoice;
+  final ValueChanged<String>? onChanged;
 
   const ChatInputBar({
     Key? key,
@@ -15,19 +16,20 @@ class ChatInputBar extends StatelessWidget {
     required this.onAttachment,
     required this.onEmoji,
     required this.onVoice,
+    this.onChanged,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.background,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, -2),
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -38,25 +40,26 @@ class ChatInputBar extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.emoji_emotions_outlined, color: AppColors.textSecondary),
               onPressed: onEmoji,
-              padding: EdgeInsets.all(8),
-              constraints: BoxConstraints(),
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(),
             ),
             IconButton(
               icon: Icon(Icons.attach_file, color: AppColors.textSecondary),
               onPressed: onAttachment,
-              padding: EdgeInsets.all(8),
-              constraints: BoxConstraints(),
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(),
             ),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             Expanded(
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: AppColors.inputBackground,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: TextField(
                   controller: controller,
+                  onChanged: onChanged,
                   decoration: InputDecoration(
                     hintText: "Nhập tin nhắn...",
                     hintStyle: TextStyle(
@@ -64,7 +67,7 @@ class ChatInputBar extends StatelessWidget {
                       fontSize: 14,
                     ),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   style: TextStyle(
                     fontSize: 14,
@@ -75,25 +78,25 @@ class ChatInputBar extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             IconButton(
               icon: Icon(Icons.mic_outlined, color: AppColors.textSecondary),
               onPressed: onVoice,
-              padding: EdgeInsets.all(8),
-              constraints: BoxConstraints(),
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(),
             ),
-            Container(
+            SizedBox(
               width: 40,
               height: 40,
               child: ElevatedButton(
                 onPressed: onSend,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: CircleBorder(),
+                  shape: const CircleBorder(),
                   padding: EdgeInsets.zero,
                   elevation: 0,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.send,
                   color: Colors.white,
                   size: 18,

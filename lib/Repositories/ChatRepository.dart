@@ -9,12 +9,25 @@ class ChatRepository {
   Future<List<Chat>> getChats() async {
     try {
       final response = await _apiService.getWithAuth(ApiEndpoints.chat);
+      print('🔍 getChats response: $response');
       if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> chatsJson = response['data']['chats'] ?? [];
-        return chatsJson.map((json) => Chat.fromJson(json)).toList();
+        final chatsData = response['data']['chats'];
+        print('🔍 chatsData type: ${chatsData.runtimeType}');
+        print('🔍 chatsData: $chatsData');
+        if (chatsData is List) {
+          return chatsData.map((json) {
+            print('🔍 chat item type: ${json.runtimeType}');
+            if (json is Map<String, dynamic>) {
+              return Chat.fromJson(json);
+            }
+            return Chat.fromJson(Map<String, dynamic>.from(json as Map));
+          }).toList();
+        }
       }
       return [];
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ getChats error: $e');
+      print('❌ stackTrace: $stackTrace');
       throw Exception('Không thể tải danh sách cuộc trò chuyện: $e');
     }
   }
@@ -42,11 +55,24 @@ class ChatRepository {
         if (name != null) 'name': name,
         'participants': participants,
       });
-      if (response['success'] == true && response['data'] != null) {
-        return Chat.fromJson(response['data']['chat'] ?? response['data']);
+      
+      // BE returns success but may not return chat data
+      if (response['success'] == true) {
+        if (response['data'] != null) {
+          return Chat.fromJson(response['data']['chat'] ?? response['data']);
+        }
+        // Return a placeholder - caller should reload chat list
+        return Chat(
+          id: '',
+          type: type,
+          name: name,
+          participants: participants,
+          updatedAt: DateTime.now(),
+        );
       }
-      throw Exception('Không thể tạo cuộc trò chuyện');
+      throw Exception(response['message'] ?? 'Không thể tạo cuộc trò chuyện');
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('Lỗi tạo cuộc trò chuyện: $e');
     }
   }

@@ -5,9 +5,11 @@ import '../../Widgets/Friends/FriendListItem.dart';
 import '../../Widgets/Friends/FriendRequestItem.dart';
 import '../../Widgets/Friends/SearchUserItem.dart';
 import '../../Services/FriendService.dart';
+import '../../Services/ChatService.dart';
 import '../../Repositories/UserRepository.dart';
 import '../../Models/User.dart';
 import '../../Models/FriendRequest.dart' as model;
+import '../../Models/Chat.dart';
 import '../../Views/Chat/ChatDetailView.dart';
 
 class FriendsView extends StatefulWidget {
@@ -20,6 +22,7 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
   TextEditingController txtSearch = TextEditingController();
 
   final FriendService _friendService = FriendService();
+  final ChatService _chatService = ChatService();
 
   // Data lists
   List<User> _friends = [];
@@ -315,6 +318,63 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     }
   }
 
+  Future<void> _openChatWithFriend(User friend) async {
+    try {
+      // First, get existing chats to see if we already have a chat with this friend
+      final chats = await _chatService.getChats();
+      
+      // Find existing direct chat with this friend
+      Chat? existingChat;
+      for (final chat in chats) {
+        if (chat.type == ChatType.direct && 
+            chat.participants.contains(friend.id)) {
+          existingChat = chat;
+          break;
+        }
+      }
+
+      String chatId;
+      if (existingChat != null) {
+        chatId = existingChat.id;
+      } else {
+        // Create new chat - BE doesn't return chat data, 
+        // so we'll create then reload list to find it
+        await _chatService.createChat(
+          type: ChatType.direct,
+          participants: [friend.id],
+        );
+        
+        // Reload chats to get the new one
+        final updatedChats = await _chatService.getChats();
+        final newChat = updatedChats.firstWhere(
+          (c) => c.type == ChatType.direct && c.participants.contains(friend.id),
+          orElse: () => throw Exception('Không tìm thấy cuộc trò chuyện mới tạo'),
+        );
+        chatId = newChat.id;
+      }
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatDetailView(
+              chatId: chatId,
+              name: friend.fullName,
+              avatarUrl: friend.avatarUrl ?? "Assets/Images/anh1.png",
+              isOnline: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      var message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.replaceFirst('Exception: ', '');
+      }
+      DialogHandler.showError(message);
+    }
+  }
+
   /// Tab 1: Danh sách bạn bè
   Widget _buildFriendsList() {
     if (_isLoadingFriends) {
@@ -344,18 +404,7 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
             avatarUrl: friend.avatarUrl ?? "Assets/Images/anh1.png",
             isOnline: false, // TODO: Implement online status
             lastSeen: "",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatDetailView(
-                    name: friend.fullName,
-                    avatarUrl: friend.avatarUrl ?? "Assets/Images/anh1.png",
-                    isOnline: false, // TODO: Implement online status
-                  ),
-                ),
-              );
-            },
+            onTap: () => _openChatWithFriend(friend),
             trailing: PopupMenuButton<String>(
               icon: Icon(Icons.more_horiz, color: AppColors.textSecondary),
               onSelected: (value) {

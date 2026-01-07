@@ -27,18 +27,40 @@ class Chat {
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
+    // Parse participants - can be list of strings or list of objects with _id
+    List<String> parseParticipants(dynamic participants) {
+      if (participants == null) return [];
+      if (participants is! List) return [];
+      return participants.map((e) {
+        if (e is String) return e;
+        if (e is Map) return e['_id']?.toString() ?? e['id']?.toString() ?? '';
+        return e.toString();
+      }).where((id) => id.isNotEmpty).toList();
+    }
+
+    // Parse participant details - handle different formats
+    List<User>? parseParticipantDetails(dynamic details) {
+      if (details == null) return null;
+      if (details is! List) return null;
+      try {
+        return details.map((e) {
+          if (e is Map<String, dynamic>) {
+            return User.fromJson(e);
+          }
+          return User.fromJson(Map<String, dynamic>.from(e));
+        }).toList();
+      } catch (_) {
+        return null;
+      }
+    }
+
     return Chat(
-      id: json['_id'] ?? json['id'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       type: json['type'] == 'group' ? ChatType.group : ChatType.direct,
       name: json['name'],
-      participants: (json['participants'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      participantDetails: (json['participant_details'] as List<dynamic>?)
-          ?.map((e) => User.fromJson(e))
-          .toList(),
-      lastMessage: json['last_message'] != null
+      participants: parseParticipants(json['participants']),
+      participantDetails: parseParticipantDetails(json['participant_details']),
+      lastMessage: (json['last_message'] != null && json['last_message'] is Map)
           ? Message.fromJson(json['last_message'])
           : null,
       updatedAt: json['updated_at'] != null
@@ -46,7 +68,7 @@ class Chat {
           : (json['updatedAt'] != null 
               ? DateTime.parse(json['updatedAt'])
               : DateTime.now()),
-      creatorId: json['creatorId'],
+      creatorId: json['creatorId']?.toString() ?? json['creator_id']?.toString(),
       description: json['description'],
     );
   }

@@ -193,7 +193,13 @@ class ApiService {
         final body = jsonDecode(response.body);
         throw Exception(body['message'] ?? "Yêu cầu không hợp lệ (400)");
       case 401:
-        throw Exception("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        try {
+          final body = jsonDecode(response.body);
+          throw Exception(body['message'] ?? "Email hoặc mật khẩu không đúng.");
+        } catch (e) {
+          if (e is Exception) rethrow;
+          throw Exception("Email hoặc mật khẩu không đúng.");
+        }
       case 403:
         throw Exception("Bạn không có quyền thực hiện thao tác này.");
       case 404:

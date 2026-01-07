@@ -129,7 +129,7 @@ class WebRTCService {
         payload: {'sdp': offer.sdp, 'type': offer.type},
       );
     } catch (e) {
-      print("Error starting direct call: $e");
+      print("Lỗi bắt đầu cuộc gọi trực tiếp: $e");
       await endCall();
     }
   }
@@ -153,7 +153,7 @@ class WebRTCService {
         payload: {'sdp': offer.sdp, 'type': offer.type},
       );
     } catch (e) {
-      print("Error starting room call: $e");
+      print("Lỗi bắt đầu cuộc gọi nhóm: $e");
       await endCall();
     }
   }
@@ -188,7 +188,7 @@ class WebRTCService {
         payload: {'sdp': answer.sdp, 'type': answer.type},
       );
     } catch (e) {
-      print("Error handling offer: $e");
+      print("Lỗi xử lý offer: $e");
       await endCall();
     }
   }
@@ -200,7 +200,7 @@ class WebRTCService {
         RTCSessionDescription(sdpData['sdp'], sdpData['type']),
       );
     } catch (e) {
-      print("Error handling answer: $e");
+      print("Lỗi xử lý answer: $e");
     }
   }
 
@@ -215,7 +215,7 @@ class WebRTCService {
         ),
       );
     } catch (e) {
-      print("Error adding ICE candidate: $e");
+      print("Lỗi thêm ICE candidate: $e");
     }
   }
 
@@ -246,7 +246,7 @@ class WebRTCService {
 
       onCallEnd?.call();
     } catch (e) {
-      print("Error ending call: $e");
+      print("Lỗi kết thúc cuộc gọi: $e");
     }
   }
 

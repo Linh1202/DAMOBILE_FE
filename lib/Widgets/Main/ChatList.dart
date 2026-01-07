@@ -89,6 +89,7 @@ class _ChatListState extends State<ChatList> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => ChatDetailView(
+                        chatId: chat.id,
                         name: name,
                         avatarUrl: avatar,
                         isOnline: !isGroup,

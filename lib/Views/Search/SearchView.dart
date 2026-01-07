@@ -26,9 +26,9 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
 
   // Mock data - Nhóm chat
   final List<Map<String, dynamic>> _groupChats = [
-    {"id": "1", "name": "Minh Anh", "avatarUrl": "Assets/Images/anh1.png", "content": "Chiều nay đi cafe nhé!", "updatedAt": "", "type": "private"},
-    {"id": "2", "name": "Team Dev Frontend", "avatarUrl": "Assets/Images/anh1.png", "content": "Đức Anh: Meeting lúc 2h nhé mọi người", "updatedAt": "", "type": "group"},
-    {"id": "3", "name": "Hương Giang", "avatarUrl": "Assets/Images/anh1.png", "content": "Ok, hẹn gặp lại!", "updatedAt": "", "type": "private"},
+    {"id": "chat_1", "name": "Minh Anh", "avatarUrl": "Assets/Images/anh1.png", "content": "Chiều nay đi cafe nhé!", "updatedAt": "", "type": "private"},
+    {"id": "chat_2", "name": "Team Dev Frontend", "avatarUrl": "Assets/Images/anh1.png", "content": "Đức Anh: Meeting lúc 2h nhé mọi người", "updatedAt": "", "type": "group"},
+    {"id": "chat_3", "name": "Hương Giang", "avatarUrl": "Assets/Images/anh1.png", "content": "Ok, hẹn gặp lại!", "updatedAt": "", "type": "private"},
   ];
 
   // Mock data - Tin nhắn (kết quả tìm kiếm trong nội dung tin nhắn)
@@ -211,6 +211,7 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
                 context,
                 MaterialPageRoute(
                   builder: (context) => ChatDetailView(
+                    chatId: chat["id"],
                     name: chat["name"],
                     avatarUrl: chat["avatarUrl"],
                     isOnline: false,
@@ -279,6 +280,7 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
               context,
               MaterialPageRoute(
                 builder: (context) => ChatDetailView(
+                  chatId: chat["id"],
                   name: chat["name"],
                   avatarUrl: chat["avatarUrl"],
                   isOnline: false,
