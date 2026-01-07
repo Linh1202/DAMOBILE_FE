@@ -16,14 +16,18 @@ class WebRTCService {
   String? _currentRoomId;
   bool _isRoomCall = false;
 
-  final Map<String, dynamic> _configuration = {
+  Map<String, dynamic> get _configuration => {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
       {'urls': 'stun:stun1.l.google.com:19302'},
       {'urls': 'stun:stun2.l.google.com:19302'},
       if (AppStrings.turnUrl.isNotEmpty)
         {
-          'urls': AppStrings.turnUrl,
+          'urls': AppStrings.turnUrl
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
           'username': AppStrings.turnUsername,
           'credential': AppStrings.turnPassword,
         },
@@ -41,7 +45,8 @@ class WebRTCService {
     if (_peerConnection != null) return;
 
     try {
-      _peerConnection = await createPeerConnection(_configuration);
+      var config = _configuration;
+      _peerConnection = await createPeerConnection(config);
 
       _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
         _sendSignalingMessage(
@@ -125,8 +130,14 @@ class WebRTCService {
       _currentTargetId = targetUserId;
       _currentRoomId = null;
 
-      await _initPeerConnection();
       await _setupLocalMedia();
+      await _initPeerConnection();
+
+      if (_localStream != null && _peerConnection != null) {
+        for (var track in _localStream!.getTracks()) {
+          _peerConnection!.addTrack(track, _localStream!);
+        }
+      }
 
       RTCSessionDescription offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
@@ -149,8 +160,16 @@ class WebRTCService {
 
       SocketService.instance.joinRoom(roomId);
 
-      await _initPeerConnection();
+      // Fix: getUserMedia before PeerConnection to avoid native crash on Android
       await _setupLocalMedia();
+      await _initPeerConnection();
+
+      // Ensure tracks are added to the peer connection
+      if (_localStream != null && _peerConnection != null) {
+        for (var track in _localStream!.getTracks()) {
+          _peerConnection!.addTrack(track, _localStream!);
+        }
+      }
 
       RTCSessionDescription offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
@@ -180,8 +199,16 @@ class WebRTCService {
         SocketService.instance.joinRoom(roomId);
       }
 
-      await _initPeerConnection();
+      // Fix: getUserMedia before PeerConnection to avoid native crash on Android
       await _setupLocalMedia();
+      await _initPeerConnection();
+
+      // Ensure tracks are added to the peer connection
+      if (_localStream != null && _peerConnection != null) {
+        for (var track in _localStream!.getTracks()) {
+          _peerConnection!.addTrack(track, _localStream!);
+        }
+      }
 
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(sdpData['sdp'], sdpData['type']),
