@@ -6,6 +6,7 @@ import 'package:doanmobile/Views/Authentication/VerifyCodeView.dart';
 import 'package:doanmobile/Views/Authentication/ResetPasswordView.dart';
 import 'package:doanmobile/Views/Authentication/SuccessView.dart';
 import 'package:doanmobile/Views/Main/HomeView.dart';
+import 'package:doanmobile/Services/AuthStorage.dart';
 import 'Utils/AppGlobals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -40,8 +41,9 @@ class MyApp extends StatelessWidget {
       navigatorKey: AppGlobals.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Doan Mobile',
-      initialRoute: '/welcome',
+      initialRoute: '/splash',
       routes: {
+        '/splash': (context) => const SplashScreen(),
         '/welcome': (context) => WelcomeView(),
         '/register': (context) => RegisterView(),
         '/login': (context) => LoginView(),
@@ -51,6 +53,45 @@ class MyApp extends StatelessWidget {
         '/success': (context) => SuccessView(),
         '/home': (context) => const HomeView(),
       },
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    final hasToken = await AuthStorage.hasToken();
+    final user = await AuthStorage.readUser();
+    
+    if (!mounted) return;
+    
+    if (hasToken && user != null) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/welcome');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
