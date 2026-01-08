@@ -9,6 +9,7 @@ import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/ChatService.dart';
 import 'package:doanmobile/Services/MediaService.dart';
 import 'package:doanmobile/Models/Message.dart';
+import 'package:doanmobile/Models/Reaction.dart';
 import 'package:doanmobile/Models/Api/SocketMessage.dart';
 import 'package:doanmobile/Utils/Constants/AppColors.dart';
 import 'package:doanmobile/Utils/Constants/AppEnums.dart';
@@ -133,6 +134,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
               mediaUrl: incomingMediaUrl,
               createdAt: message.timestamp ?? DateTime.now(),
               senderName: message.senderName,
+              chatName: message.chatName,
             );
             setState(() {
               _messages = [..._messages, newMessage];
@@ -144,8 +146,11 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         }
         break;
 
+      case MessageType.reaction:
+        _handleReactionMessage(message);
+        break;
+
       case MessageType.history:
-        // Handle history message (list of messages)
         if (message.payload is List) {
           final historyMessages = (message.payload as List)
               .map((json) => Message.fromJson(json))
@@ -179,6 +184,88 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
       default:
         break;
     }
+  }
+
+  void _handleReactionMessage(SocketMessage message) {
+    if (message.roomId != widget.chatId) return;
+    
+    final payload = message.payload as Map<String, dynamic>?;
+    if (payload == null) return;
+
+    final messageId = payload['message_id']?.toString();
+    final userId = payload['user_id']?.toString();
+    final emoji = payload['emoji']?.toString();
+    final action = payload['action']?.toString(); // "added", "removed", or "updated"
+
+    if (messageId == null || userId == null || emoji == null || action == null) {
+      print('❌ Invalid reaction payload: $payload');
+      return;
+    }
+
+    print('👍 Reaction update: messageId=$messageId, action=$action, emoji=$emoji');
+
+    setState(() {
+      final messageIndex = _messages.indexWhere((m) => m.id == messageId);
+      if (messageIndex == -1) {
+        print('⚠️ Message not found for reaction: $messageId');
+        return;
+      }
+
+      final message = _messages[messageIndex];
+      List<Reaction> updatedReactions = List.from(message.reactions);
+
+      switch (action) {
+        case 'added':
+          // Add new reaction if not already present
+          if (!updatedReactions.any((r) => r.userId == userId && r.emoji == emoji)) {
+            updatedReactions.add(Reaction(
+              userId: userId,
+              emoji: emoji,
+              createdAt: DateTime.now(),
+            ));
+            print('✅ Reaction added');
+          }
+          break;
+
+        case 'removed':
+          // Remove the reaction
+          updatedReactions.removeWhere((r) => r.userId == userId && r.emoji == emoji);
+          print('✅ Reaction removed');
+          break;
+
+        case 'updated':
+          // Update: remove old emoji from this user and add new one
+          updatedReactions.removeWhere((r) => r.userId == userId);
+          updatedReactions.add(Reaction(
+            userId: userId,
+            emoji: emoji,
+            createdAt: DateTime.now(),
+          ));
+          print('✅ Reaction updated');
+          break;
+
+        default:
+          print('⚠️ Unknown reaction action: $action');
+      }
+
+      // Update the message with new reactions
+      final updatedMessage = Message(
+        id: message.id,
+        chatId: message.chatId,
+        senderId: message.senderId,
+        content: message.content,
+        mediaUrl: message.mediaUrl,
+        readBy: message.readBy,
+        createdAt: message.createdAt,
+        isEdited: message.isEdited,
+        senderName: message.senderName,
+        senderAvatarUrl: message.senderAvatarUrl,
+        reactions: updatedReactions,
+        chatName: message.chatName,
+      );
+
+      _messages[messageIndex] = updatedMessage;
+    });
   }
 
   void _sendMessage() {
@@ -222,6 +309,15 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
 
   bool _isMine(String senderId) {
     return senderId == _currentUserId;
+  }
+
+  void _sendReaction(String messageId, String emoji) {
+    print('👍 Sending reaction: messageId=$messageId, emoji=$emoji');
+    ref.read(socketServiceProvider).sendReaction(
+      widget.chatId,
+      messageId,
+      emoji,
+    );
   }
 
   void _showMediaPicker() {

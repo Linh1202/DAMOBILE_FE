@@ -1,7 +1,7 @@
 import 'User.dart';
 import 'Message.dart';
 
-enum ChatType { direct, group }
+enum ChatType { private, group }
 
 class Chat {
   final String id;
@@ -56,7 +56,7 @@ class Chat {
 
     return Chat(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      type: json['type'] == 'group' ? ChatType.group : ChatType.direct,
+      type: json['type'] == 'group' ? ChatType.group : ChatType.private,
       name: json['name'],
       participants: parseParticipants(json['participants']),
       participantDetails: parseParticipantDetails(json['participant_details']),
@@ -76,7 +76,7 @@ class Chat {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'type': type == ChatType.group ? 'group' : 'direct',
+      'type': type == ChatType.group ? 'group' : 'private',
       'name': name,
       'participants': participants,
       'updatedAt': updatedAt.toIso8601String(),

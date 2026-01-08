@@ -326,7 +326,7 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
       // Find existing direct chat with this friend
       Chat? existingChat;
       for (final chat in chats) {
-        if (chat.type == ChatType.direct && 
+        if (chat.type == ChatType.private && 
             chat.participants.contains(friend.id)) {
           existingChat = chat;
           break;
@@ -340,14 +340,14 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
         // Create new chat - BE doesn't return chat data, 
         // so we'll create then reload list to find it
         await _chatService.createChat(
-          type: ChatType.direct,
+          type: ChatType.private,
           participants: [friend.id],
         );
         
         // Reload chats to get the new one
         final updatedChats = await _chatService.getChats();
         final newChat = updatedChats.firstWhere(
-          (c) => c.type == ChatType.direct && c.participants.contains(friend.id),
+          (c) => c.type == ChatType.private && c.participants.contains(friend.id),
           orElse: () => throw Exception('Không tìm thấy cuộc trò chuyện mới tạo'),
         );
         chatId = newChat.id;

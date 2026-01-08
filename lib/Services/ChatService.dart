@@ -1,6 +1,7 @@
 import '../Repositories/ChatRepository.dart';
 import '../Models/Chat.dart';
 import '../Models/Message.dart';
+import '../Models/HistoryMessage.dart';
 
 class ChatService {
   final ChatRepository _chatRepository = ChatRepository();

@@ -1,6 +1,6 @@
 import 'Reaction.dart';
 
-class Message {
+class HistoryMessage {
   final String id;
   final String chatId;
   final String senderId;
@@ -9,13 +9,9 @@ class Message {
   final List<String> readBy;
   final DateTime createdAt;
   final bool isEdited;
-
-  final String? senderName;
-  final String? senderAvatarUrl;
   final List<Reaction> reactions;
-  final String? chatName;
 
-  Message({
+  HistoryMessage({
     required this.id,
     required this.chatId,
     required this.senderId,
@@ -24,39 +20,30 @@ class Message {
     this.readBy = const [],
     required this.createdAt,
     this.isEdited = false,
-    this.senderName,
-    this.senderAvatarUrl,
     this.reactions = const [],
-    this.chatName,
   });
 
-  factory Message.fromJson(dynamic json) {
-    final Map<String, dynamic> data = json is Map<String, dynamic> 
-        ? json 
-        : Map<String, dynamic>.from(json as Map);
-    
-    final reactionsData = data['reactions'] as List<dynamic>? ?? [];
+  factory HistoryMessage.fromJson(Map<String, dynamic> json) {
+    final reactionsData = json['reactions'] as List<dynamic>? ?? [];
     final reactions = reactionsData
         .map((r) => Reaction.fromJson(r as Map<String, dynamic>))
         .toList();
-    
-    return Message(
-      id: data['_id']?.toString() ?? data['id']?.toString() ?? '',
-      chatId: data['chat_id']?.toString() ?? '',
-      senderId: data['sender_id']?.toString() ?? '',
-      content: data['content'] ?? '',
-      mediaUrl: data['media_url'],
-      readBy: (data['read_by'] as List<dynamic>?)
+
+    return HistoryMessage(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      chatId: json['chat_id']?.toString() ?? '',
+      senderId: json['sender_id']?.toString() ?? '',
+      content: json['content'] ?? '',
+      mediaUrl: json['media_url'],
+      readBy: (json['read_by'] as List<dynamic>?)
           ?.map((e) => e.toString())
-          .toList() ?? [],
-      createdAt: data['created_at'] != null 
-          ? DateTime.parse(data['created_at']) 
+          .toList() ??
+          [],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
           : DateTime.now(),
-      isEdited: data['is_edited'] ?? false,
-      senderName: data['sender_name'] ?? data['sender']?['username'],
-      senderAvatarUrl: data['sender_avatar_url'] ?? data['sender']?['avatar_url'],
+      isEdited: json['is_edited'] ?? false,
       reactions: reactions,
-      chatName: data['chat_name'],
     );
   }
 
@@ -71,7 +58,6 @@ class Message {
       'created_at': createdAt.toIso8601String(),
       'is_edited': isEdited,
       'reactions': reactions.map((r) => r.toJson()).toList(),
-      'chat_name': chatName,
     };
   }
 
@@ -89,9 +75,5 @@ class Message {
 
   List<String> getReactionUsers(String emoji) {
     return reactions.where((r) => r.emoji == emoji).map((r) => r.userId).toList();
-  }
-
-  List<String> getUniqueReactionEmojis() {
-    return reactions.map((r) => r.emoji).toSet().toList();
   }
 }

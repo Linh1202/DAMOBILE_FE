@@ -111,7 +111,6 @@ class SocketService {
               print('📥 WS parsed: type=${socketMsg.type.value}, roomId=${socketMsg.roomId}');
               _messageController.add(socketMsg);
             } else if (decoded is List) {
-              // Handle HISTORY which returns a List of HistoryMessage objects
               print('📥 WS received HISTORY with ${decoded.length} messages');
               _messageController.add(SocketMessage(
                 type: MessageType.history,
@@ -167,11 +166,11 @@ class SocketService {
 
     _cancelReconnectTimer();
     
-    // Exponential backoff
     final List<int> backoffDelays = [2, 5, 10, 30, 60];
     final delay = Duration(seconds: backoffDelays[_retryCount]);
     _retryCount++;
 
+    print("WebSocket: Scheduling reconnect in ${delay.inSeconds}s (attempt $_retryCount/$_maxRetries)");
     _reconnectTimer = Timer(delay, () {
       connect();
     });
@@ -202,18 +201,18 @@ class SocketService {
     }
   }
 
-  // --- Chat & Room Management ---
-
   void joinRoom(String roomId) {
     print('📍 WS joinRoom: $roomId');
     sendMessage(SocketMessage.createJoinRoom(roomId));
   }
 
   void leaveRoom(String roomId) {
+    print('📍 WS leaveRoom: $roomId');
     sendMessage(SocketMessage.createLeaveRoom(roomId));
   }
 
   void sendChatMessage(String roomId, String content, {String? mediaUrl}) {
+    print('💬 WS sendChatMessage: roomId=$roomId, content=$content, mediaUrl=$mediaUrl');
     sendMessage(SocketMessage.createChatMessage(
       roomId: roomId,
       content: content,
@@ -222,6 +221,7 @@ class SocketService {
   }
 
   void sendReaction(String roomId, String messageId, String emoji) {
+    print('👍 WS sendReaction: roomId=$roomId, messageId=$messageId, emoji=$emoji');
     sendMessage(SocketMessage.createReaction(
       roomId: roomId,
       messageId: messageId,
@@ -230,61 +230,59 @@ class SocketService {
   }
 
   void sendTyping(String roomId) {
+    print('✏️ WS sendTyping: roomId=$roomId');
     sendMessage(SocketMessage.createTyping(roomId));
   }
 
-  // --- Social & Notifications ---
+  void sendFriendRequest(String targetUserId) {
+    print('👥 WS sendFriendRequest: targetUserId=$targetUserId');
+    sendMessage(SocketMessage.createFriendRequest(targetUserId));
+  }
 
-  void sendFriendRequest(String targetIdOrUsername) {
-    sendMessage(SocketMessage(
-      type: MessageType.friendRequest,
-      roomId: targetIdOrUsername,
+  void sendGroupInvite(String targetUserId, String inviteMessage) {
+    print('👫 WS sendGroupInvite: targetUserId=$targetUserId, message=$inviteMessage');
+    sendMessage(SocketMessage.createGroupInvite(
+      targetUserId: targetUserId,
+      content: inviteMessage,
     ));
   }
 
-  void sendGroupInvite(String targetIdOrUsername, String content) {
-    sendMessage(SocketMessage(
-      type: MessageType.groupInvite,
-      roomId: targetIdOrUsername,
+  void sendNotification({String? targetUserId, required String content}) {
+    print('🔔 WS sendNotification: targetUserId=$targetUserId, content=$content');
+    sendMessage(SocketMessage.createNotification(
+      targetUserId: targetUserId,
       content: content,
     ));
   }
-
-  void sendNotification(String? targetIdOrUsername, String content) {
-    sendMessage(SocketMessage(
-      type: MessageType.notification,
-      roomId: targetIdOrUsername ?? "",
-      content: content,
-    ));
-  }
-
-  // --- WebRTC Signaling ---
 
   void sendDirectCall({
     required String targetUserId,
-    required SignalingType type,
-    dynamic payload,
+    required SignalingType signalingType,
+    dynamic signalingPayload,
   }) {
+    print('📞 WS sendDirectCall: targetUserId=$targetUserId, type=$signalingType');
     sendMessage(SocketMessage.createDirectCall(
       targetId: targetUserId,
-      signalingType: type,
-      signalingPayload: payload,
+      signalingType: signalingType,
+      signalingPayload: signalingPayload,
     ));
   }
 
   void sendRoomCall({
     required String roomId,
-    required SignalingType type,
-    dynamic payload,
+    required SignalingType signalingType,
+    dynamic signalingPayload,
   }) {
+    print('📞 WS sendRoomCall: roomId=$roomId, type=$signalingType');
     sendMessage(SocketMessage.createRoomCall(
       roomId: roomId,
-      signalingType: type,
-      signalingPayload: payload,
+      signalingType: signalingType,
+      signalingPayload: signalingPayload,
     ));
   }
 
   void close() {
+    print('🔌 WS closing connection...');
     _cancelReconnectTimer();
     _subscription?.cancel();
     _subscription = null;

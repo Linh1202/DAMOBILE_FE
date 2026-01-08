@@ -51,7 +51,7 @@ class ChatRepository {
   }) async {
     try {
       final response = await _apiService.postWithAuth(ApiEndpoints.chat, {
-        'type': type == ChatType.group ? 'group' : 'direct',
+        'type': type == ChatType.group ? 'group' : 'private',
         if (name != null) 'name': name,
         'participants': participants,
       });

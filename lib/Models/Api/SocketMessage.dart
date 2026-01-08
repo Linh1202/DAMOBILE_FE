@@ -5,6 +5,8 @@ class SocketMessage {
   final String? roomId;
   final String? senderId;
   final String? senderName;
+  final String? chatName;
+  final String? lastMessage;
   final String? content;
   final dynamic payload;
   final DateTime? timestamp;
@@ -14,6 +16,8 @@ class SocketMessage {
     this.roomId,
     this.senderId,
     this.senderName,
+    this.chatName,
+    this.lastMessage,
     this.content,
     this.payload,
     this.timestamp,
@@ -28,6 +32,8 @@ class SocketMessage {
       roomId: json['room_id']?.toString(),
       senderId: json['sender_id']?.toString(),
       senderName: json['sender_name']?.toString(),
+      chatName: json['chat_name']?.toString(),
+      lastMessage: json['last_message']?.toString(),
       content: json['content']?.toString(),
       payload: json['payload'],
       timestamp: json['timestamp'] != null
@@ -42,6 +48,8 @@ class SocketMessage {
     if (roomId != null) data['room_id'] = roomId;
     if (senderId != null) data['sender_id'] = senderId;
     if (senderName != null) data['sender_name'] = senderName;
+    if (chatName != null) data['chat_name'] = chatName;
+    if (lastMessage != null) data['last_message'] = lastMessage;
     if (content != null) data['content'] = content;
     if (payload != null) data['payload'] = payload;
     if (timestamp != null) data['timestamp'] = timestamp!.toIso8601String();
@@ -78,12 +86,44 @@ class SocketMessage {
     return SocketMessage(
       type: MessageType.reaction,
       roomId: roomId,
-      payload: {'message_id': messageId, 'emoji': emoji},
+      payload: {
+        'message_id': messageId,
+        'emoji': emoji,
+      },
     );
   }
 
   static SocketMessage createTyping(String roomId) {
     return SocketMessage(type: MessageType.typing, roomId: roomId);
+  }
+
+  static SocketMessage createFriendRequest(String targetUserId) {
+    return SocketMessage(
+      type: MessageType.friendRequest,
+      roomId: targetUserId,
+    );
+  }
+
+  static SocketMessage createGroupInvite({
+    required String targetUserId,
+    required String content,
+  }) {
+    return SocketMessage(
+      type: MessageType.groupInvite,
+      roomId: targetUserId,
+      content: content,
+    );
+  }
+
+  static SocketMessage createNotification({
+    String? targetUserId,
+    required String content,
+  }) {
+    return SocketMessage(
+      type: MessageType.notification,
+      roomId: targetUserId,
+      content: content,
+    );
   }
 
   static SocketMessage createDirectCall({
