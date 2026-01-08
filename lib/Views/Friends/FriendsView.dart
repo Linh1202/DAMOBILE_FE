@@ -108,7 +108,9 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
 
     // Kiểm tra định dạng email
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(query)) {
+    final isEmail = emailRegex.hasMatch(query);
+
+    if (!isEmail && query.length < 2) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
@@ -121,7 +123,13 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     });
 
     try {
-      final users = await UserRepository().findUserByEmail(query);
+      List<User> users;
+      if (isEmail) {
+        users = await UserRepository().findUserByEmail(query);
+      } else {
+        users = await UserRepository().findUserByUsername(query);
+      }
+
       if (mounted) {
         setState(() {
           _searchResults = users.map((user) => {
@@ -477,9 +485,9 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
           child: TextField(
             controller: txtSearch,
             onChanged: _onSearch,
-            keyboardType: TextInputType.emailAddress,
+            keyboardType: TextInputType.text,
             decoration: InputDecoration(
-              hintText: "Nhập email để tìm kiếm...",
+              hintText: "Nhập email hoặc tên để tìm kiếm...",
               hintStyle: TextStyle(color: AppColors.textSecondary),
               prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
               filled: true,
@@ -503,17 +511,8 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
   Widget _buildSearchResults() {
     if (txtSearch.text.isEmpty) {
       return _buildEmptyState(
-        icon: Icons.email_outlined,
-        message: "Nhập email để tìm kiếm",
-      );
-    }
-
-    // Kiểm tra format email để hiển thị message phù hợp
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(txtSearch.text) && !_isSearching) {
-      return _buildEmptyState(
-        icon: Icons.email_outlined,
-        message: "Vui lòng nhập đúng định dạng email",
+        icon: Icons.search,
+        message: "Nhập email hoặc tên để tìm kiếm",
       );
     }
 
