@@ -71,7 +71,10 @@ class SocketService {
   }
 
   Future<void> connect() async {
-    if (_isConnected || _isConnecting) return;
+    if (_isConnected || _isConnecting) {
+      print('🔌 WS: Already connected or connecting, skip');
+      return;
+    }
     _isConnecting = true;
 
     final url = await _getWsUrl();
@@ -102,16 +105,21 @@ class SocketService {
           print("WebSocket: Message received: $message");
           try {
             final decoded = jsonDecode(message);
+            print('📥 WS decoded: $decoded');
             if (decoded is Map<String, dynamic>) {
-              _messageController.add(SocketMessage.fromJson(decoded));
+              final socketMsg = SocketMessage.fromJson(decoded);
+              print('📥 WS parsed: type=${socketMsg.type.value}, roomId=${socketMsg.roomId}');
+              _messageController.add(socketMsg);
             } else if (decoded is List) {
               // Handle HISTORY which returns a List of HistoryMessage objects
+              print('📥 WS received HISTORY with ${decoded.length} messages');
               _messageController.add(SocketMessage(
                 type: MessageType.history,
                 payload: decoded,
               ));
             }
           } catch (e) {
+            print('❌ WS decode error: $e');
             _handleError("Lỗi giải mã tin nhắn: $e");
           }
         },
@@ -182,7 +190,9 @@ class SocketService {
 
     if (_channel != null && _isConnected) {
       try {
-        _channel!.sink.add(jsonEncode(message.toJson()));
+        final json = jsonEncode(message.toJson());
+        print('📤 WS sending: $json');
+        _channel!.sink.add(json);
       } catch (e) {
         _handleError("Không thể gửi tin nhắn: $e");
       }
@@ -195,6 +205,7 @@ class SocketService {
   // --- Chat & Room Management ---
 
   void joinRoom(String roomId) {
+    print('📍 WS joinRoom: $roomId');
     sendMessage(SocketMessage.createJoinRoom(roomId));
   }
 

@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:doanmobile/Providers/SocketProvider.dart';
 import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/ChatService.dart';
+import 'package:doanmobile/Services/MediaService.dart';
 import 'package:doanmobile/Models/Message.dart';
 import 'package:doanmobile/Models/Api/SocketMessage.dart';
 import 'package:doanmobile/Utils/Constants/AppColors.dart';
@@ -38,12 +42,16 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
+  final MediaService _mediaService = MediaService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   List<Message> _messages = [];
   String _currentUserId = "";
   String? _targetUserId;
   bool _isLoading = true;
   bool _isTyping = false;
+  bool _isUploading = false;
+  String _uploadingLabel = 'Đang gửi...';
   String? _typingUser;
 
   @override
@@ -56,6 +64,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     // Load current user
     final user = await AuthStorage.readUser();
     _currentUserId = user?['id']?.toString() ?? user?['_id']?.toString() ?? "";
+    print('👤 _initChat: user=$user, _currentUserId=$_currentUserId');
 
     if (!widget.isGroup) {
       try {
@@ -100,10 +109,18 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         print('💬 CHAT_MESSAGE: roomId=${message.roomId}, chatId=${widget.chatId}, match=${message.roomId == widget.chatId}');
         // Only add if it's for this room
         if (message.roomId == widget.chatId) {
-          // Check for duplicate (same content from same sender within 5 seconds)
+          // Skip messages from current user (already added optimistically)
+          if (message.senderId == _currentUserId) {
+            print('💬 Skipping own message (optimistic update already added)');
+            return;
+          }
+          
+          // Check for duplicate (same content/media from same sender within 5 seconds)
+          final incomingMediaUrl = message.payload?['media_url']?.toString();
           final isDuplicate = _messages.any((m) =>
             m.senderId == message.senderId &&
-            m.content == message.content &&
+            m.content == (message.content ?? '') &&
+            (m.mediaUrl ?? '') == (incomingMediaUrl ?? '') &&
             DateTime.now().difference(m.createdAt).inSeconds.abs() < 5
           );
           
@@ -113,12 +130,12 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
               chatId: widget.chatId,
               senderId: message.senderId ?? "",
               content: message.content ?? "",
-              mediaUrl: message.payload?['media_url'],
+              mediaUrl: incomingMediaUrl,
               createdAt: message.timestamp ?? DateTime.now(),
               senderName: message.senderName,
             );
             setState(() {
-              _messages.add(newMessage);
+              _messages = [..._messages, newMessage];
               _isTyping = false;
               _typingUser = null;
             });
@@ -168,6 +185,8 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    print('📩 _sendMessage: text=$text, currentUserId=$_currentUserId');
+
     // Add message optimistically for instant UI feedback
     final newMessage = Message(
       id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
@@ -177,8 +196,10 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
       createdAt: DateTime.now(),
     );
     
+    print('📩 Adding message to list: ${newMessage.content}, total messages: ${_messages.length + 1}');
+    
     setState(() {
-      _messages.add(newMessage);
+      _messages = [..._messages, newMessage];
     });
 
     // Send via WebSocket
@@ -189,15 +210,10 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    // With reverse: true, position 0 is the bottom (newest messages)
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
   }
 
   void _onTyping() {
@@ -206,6 +222,168 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
 
   bool _isMine(String senderId) {
     return senderId == _currentUserId;
+  }
+
+  void _showMediaPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library, color: AppColors.primary),
+                title: const Text('Chọn ảnh từ thư viện'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSendImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.camera_alt, color: AppColors.primary),
+                title: const Text('Chụp ảnh'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSendImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.attach_file, color: AppColors.primary),
+                title: const Text('Chọn file'),
+                subtitle: Text(
+                  'PDF, DOC, ZIP, ...',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndSendFile();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() {
+        _isUploading = true;
+        _uploadingLabel = 'Đang gửi ảnh...';
+      });
+
+      // Upload image
+      final file = File(pickedFile.path);
+      final mediaUrl = await _mediaService.uploadMedia(file);
+
+      // Add optimistic message
+      final newMessage = Message(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        chatId: widget.chatId,
+        senderId: _currentUserId,
+        content: '',
+        mediaUrl: mediaUrl,
+        createdAt: DateTime.now(),
+      );
+
+      setState(() {
+        _messages = [..._messages, newMessage];
+        _isUploading = false;
+      });
+
+      // Send via WebSocket with media_url
+      ref.read(socketServiceProvider).sendChatMessage(
+        widget.chatId,
+        '',
+        mediaUrl: mediaUrl,
+      );
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() => _isUploading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể gửi ảnh: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAndSendFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final pickedFile = result.files.first;
+      if (pickedFile.path == null) return;
+
+      setState(() {
+        _isUploading = true;
+        _uploadingLabel = 'Đang gửi file...';
+      });
+
+      // Upload file
+      final file = File(pickedFile.path!);
+      final mediaUrl = await _mediaService.uploadMedia(file);
+
+      // Add optimistic message with file name as content
+      final fileName = pickedFile.name;
+      final newMessage = Message(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        chatId: widget.chatId,
+        senderId: _currentUserId,
+        content: '📎 $fileName',
+        mediaUrl: mediaUrl,
+        createdAt: DateTime.now(),
+      );
+
+      setState(() {
+        _messages = [..._messages, newMessage];
+        _isUploading = false;
+      });
+
+      // Send via WebSocket with media_url and file name
+      ref.read(socketServiceProvider).sendChatMessage(
+        widget.chatId,
+        '📎 $fileName',
+        mediaUrl: mediaUrl,
+      );
+
+      _scrollToBottom();
+    } catch (e) {
+      setState(() => _isUploading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể gửi file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -227,11 +405,12 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                     ? const Center(child: Text('Chưa có tin nhắn'))
                     : ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         itemCount: _messages.length + (_isTyping ? 1 : 0),
                         itemBuilder: (context, index) {
-                          // Show typing indicator at the end
-                          if (_isTyping && index == _messages.length) {
+                          // Show typing indicator at the top (index 0) when reversed
+                          if (_isTyping && index == 0) {
                             return Padding(
                               padding: const EdgeInsets.only(left: 8, top: 8),
                               child: Row(
@@ -254,12 +433,21 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                             );
                           }
 
-                          final message = _messages[index];
+                          // Adjust index for reversed list
+                          final messageIndex = _isTyping 
+                              ? _messages.length - index 
+                              : _messages.length - 1 - index;
+                          
+                          if (messageIndex < 0 || messageIndex >= _messages.length) {
+                            return const SizedBox.shrink();
+                          }
+
+                          final message = _messages[messageIndex];
                           final bool isMine = _isMine(message.senderId);
-                          final bool prevIsMine = index > 0 
-                              ? _isMine(_messages[index - 1].senderId) 
+                          final bool prevIsMine = messageIndex > 0 
+                              ? _isMine(_messages[messageIndex - 1].senderId) 
                               : !isMine;
-                          final bool showAvatar = !isMine && (index == 0 || prevIsMine != isMine);
+                          final bool showAvatar = !isMine && (messageIndex == 0 || prevIsMine != isMine);
 
                           return MessageBubble(
                             content: message.content,
@@ -273,13 +461,34 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                         },
                       ),
           ),
+          // Upload loading indicator
+          if (_isUploading)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppColors.primary.withOpacity(0.1),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _uploadingLabel,
+                    style: TextStyle(color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
           ChatInputBar(
             controller: _messageController,
             onSend: _sendMessage,
             onChanged: (_) => _onTyping(),
-            onAttachment: () {
-              // TODO: Upload media
-            },
+            onAttachment: _showMediaPicker,
             onEmoji: () {
               // TODO: Emoji picker
             },
