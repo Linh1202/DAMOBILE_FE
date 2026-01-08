@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../Utils/Constants/AppColors.dart';
+import '../../Services/EmojiService.dart';
 import '../Avatars/UserAvatar.dart';
 
 class MessageBubble extends StatefulWidget {
@@ -196,11 +197,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                   maxWidth: MediaQuery.of(context).size.width * 0.65,
                 ),
                 padding: EdgeInsets.symmetric(
-                  horizontal: widget.mediaUrl != null ? 4 : 16,
-                  vertical: widget.mediaUrl != null ? 4 : 10,
+                  horizontal: (widget.mediaUrl != null || EmojiService.isOnlyEmojis(widget.content)) ? 4 : 16,
+                  vertical: (widget.mediaUrl != null || EmojiService.isOnlyEmojis(widget.content)) ? 4 : 10,
                 ),
                 decoration: BoxDecoration(
-                  color: isMine ? AppColors.primary : AppColors.inputBackground,
+                  color: widget.mediaUrl == null && EmojiService.isOnlyEmojis(widget.content)
+                      ? Colors.transparent
+                      : (isMine ? AppColors.primary : AppColors.inputBackground),
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(18),
                     topRight: const Radius.circular(18),
@@ -307,7 +310,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                         child: Text(
                           widget.content,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: EmojiService.isOnlyEmojis(widget.content) ? 32 : 15,
                             color: isMine ? Colors.white : AppColors.textPrimary,
                           ),
                         ),
