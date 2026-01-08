@@ -41,47 +41,53 @@ class FriendRequestItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Tên
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+                // Row với tên và buttons
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tên
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    // Buttons
+                    _buildActionButton(
+                      label: "Chấp nhận",
+                      icon: Icons.person_add_outlined,
+                      isPrimary: true,
+                      onPressed: isLoading ? null : onAccept,
+                    ),
+                    SizedBox(width: 8),
+                    _buildActionButton(
+                      label: "Từ chối",
+                      icon: Icons.person_remove_outlined,
+                      isPrimary: false,
+                      onPressed: isLoading ? null : onReject,
+                    ),
+                  ],
                 ),
-                SizedBox(height: 2),
-                // Ngày gửi lời mời
+                SizedBox(height: 4),
+                // Ngày gửi lời mời - trên dòng riêng
                 Text(
                   requestDate,
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          // Buttons
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Nút Chấp nhận
-              _buildActionButton(
-                label: "Chấp nhận",
-                icon: Icons.person_add_outlined,
-                isPrimary: true,
-                onPressed: isLoading ? null : onAccept,
-              ),
-              SizedBox(width: 8),
-              // Nút Từ chối
-              _buildActionButton(
-                label: "Từ chối",
-                icon: Icons.person_remove_outlined,
-                isPrimary: false,
-                onPressed: isLoading ? null : onReject,
-              ),
-            ],
           ),
         ],
       ),

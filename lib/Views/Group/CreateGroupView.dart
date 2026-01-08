@@ -3,6 +3,11 @@ import '../../Utils/Constants/AppColors.dart';
 import '../../Utils/Handlers/NavigationHandler.dart';
 import '../../Utils/Handlers/DialogHandler.dart';
 import '../../Widgets/Avatars/UserAvatar.dart';
+import '../../Services/GroupService.dart';
+import '../../Services/FriendService.dart';
+import '../../Services/AuthStorage.dart';
+import '../../Models/User.dart';
+import '../Chat/ChatDetailView.dart';
 
 class CreateGroupView extends StatefulWidget {
   @override
@@ -10,54 +15,51 @@ class CreateGroupView extends StatefulWidget {
 }
 
 class _CreateGroupViewState extends State<CreateGroupView> {
+  final GroupService _groupService = GroupService();
+  final FriendService _friendService = FriendService();
   TextEditingController txtGroupName = TextEditingController();
   List<String> selectedMemberIds = [];
+  bool _isLoading = false;
+  bool _isLoadingFriends = true;
+  String _currentUserId = '';
+  List<User> _friends = [];
 
-  // Mock data - Danh sách bạn bè
-  final List<Map<String, dynamic>> _friends = [
-    {
-      "id": "1",
-      "name": "Minh Anh",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "isOnline": true,
-      "lastSeen": "Đang hoạt động",
-    },
-    {
-      "id": "2",
-      "name": "Tuấn Kiệt",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "isOnline": false,
-      "lastSeen": "5 phút trước",
-    },
-    {
-      "id": "3",
-      "name": "Hương Giang",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "isOnline": true,
-      "lastSeen": "Đang hoạt động",
-    },
-    {
-      "id": "4",
-      "name": "Đức Anh",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "isOnline": false,
-      "lastSeen": "2 giờ trước",
-    },
-    {
-      "id": "5",
-      "name": "Thu Thảo",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "isOnline": true,
-      "lastSeen": "Đang hoạt động",
-    },
-    {
-      "id": "6",
-      "name": "Hoàng Long",
-      "avatarUrl": "Assets/Images/anh1.png",
-      "isOnline": false,
-      "lastSeen": "1 ngày trước",
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _loadCurrentUser();
+    await _loadFriends();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthStorage.readUser();
+    if (mounted && user != null) {
+      setState(() {
+        _currentUserId = user['id']?.toString() ?? user['_id']?.toString() ?? '';
+      });
+    }
+  }
+
+  Future<void> _loadFriends() async {
+    try {
+      final friends = await _friendService.getFriends();
+      if (mounted) {
+        setState(() {
+          _friends = friends;
+          _isLoadingFriends = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingFriends = false);
+        DialogHandler.showError("Không thể tải danh sách bạn bè: $e");
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -75,7 +77,7 @@ class _CreateGroupViewState extends State<CreateGroupView> {
     });
   }
 
-  void _createGroup() {
+  Future<void> _createGroup() async {
     if (txtGroupName.text.trim().isEmpty) {
       DialogHandler.showError("Vui lòng nhập tên nhóm");
       return;
@@ -84,10 +86,50 @@ class _CreateGroupViewState extends State<CreateGroupView> {
       DialogHandler.showError("Vui lòng chọn ít nhất 1 thành viên");
       return;
     }
+    if (_currentUserId.isEmpty) {
+      DialogHandler.showError("Không thể xác định người dùng hiện tại");
+      return;
+    }
 
-    // TODO: Gọi API tạo nhóm
-    DialogHandler.showSuccess("Tạo nhóm thành công!");
-    Navigator.pop(context);
+    setState(() => _isLoading = true);
+
+    try {
+      // Bước 1: Tạo nhóm
+      final chat = await _groupService.createGroup(
+        name: txtGroupName.text.trim(),
+        description: '',
+        creatorId: _currentUserId,
+      );
+
+      // Bước 2: Thêm các member đã chọn vào nhóm
+      for (final memberId in selectedMemberIds) {
+        await _groupService.addMember(chat.id, memberId);
+      }
+
+      DialogHandler.showSuccess("Tạo nhóm thành công!");
+
+      // Navigate đến ChatDetailView của nhóm vừa tạo
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatDetailView(
+              chatId: chat.id,
+              name: chat.name ?? txtGroupName.text.trim(),
+              avatarUrl: '',
+              isOnline: false,
+              isGroup: true,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      DialogHandler.showError("Lỗi tạo nhóm: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -111,17 +153,29 @@ class _CreateGroupViewState extends State<CreateGroupView> {
         ),
         centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: _createGroup,
-            child: Text(
-              "Tạo",
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          _isLoading
+              ? Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                )
+              : TextButton(
+                  onPressed: _createGroup,
+                  child: Text(
+                    "Tạo",
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
         ],
       ),
       body: Column(
@@ -238,71 +292,78 @@ class _CreateGroupViewState extends State<CreateGroupView> {
 
           // Danh sách bạn bè
           Expanded(
-            child: ListView.builder(
-              itemCount: _friends.length,
-              itemBuilder: (context, index) {
-                final friend = _friends[index];
-                final isSelected = selectedMemberIds.contains(friend["id"]);
-
-                return ListTile(
-                  onTap: () => _toggleMember(friend["id"]),
-                  leading: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Checkbox
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected 
-                                ? AppColors.primary 
-                                : AppColors.border,
-                            width: 2,
-                          ),
-                          color: isSelected 
-                              ? AppColors.primary 
-                              : Colors.transparent,
+            child: _isLoadingFriends
+                ? Center(child: CircularProgressIndicator())
+                : _friends.isEmpty
+                    ? Center(
+                        child: Text(
+                          "Bạn chưa có bạn bè nào",
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
-                        child: isSelected
-                            ? Icon(
-                                Icons.check,
-                                color: Colors.white,
-                                size: 16,
-                              )
-                            : null,
+                      )
+                    : ListView.builder(
+                        itemCount: _friends.length,
+                        itemBuilder: (context, index) {
+                          final friend = _friends[index];
+                          final isSelected = selectedMemberIds.contains(friend.id);
+
+                          return ListTile(
+                            onTap: () => _toggleMember(friend.id),
+                            leading: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Checkbox
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.border,
+                                      width: 2,
+                                    ),
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.transparent,
+                                  ),
+                                  child: isSelected
+                                      ? Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 16,
+                                        )
+                                      : null,
+                                ),
+                                SizedBox(width: 12),
+                                // Avatar
+                                UserAvatar(
+                                  imagePath: friend.avatarUrl,
+                                  name: friend.fullName,
+                                  size: 48,
+                                  isOnline: false,
+                                ),
+                              ],
+                            ),
+                            title: Text(
+                              friend.fullName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            subtitle: Text(
+                              friend.email,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      SizedBox(width: 12),
-                      // Avatar
-                      UserAvatar(
-                        imagePath: friend["avatarUrl"],
-                        name: friend["name"],
-                        size: 48,
-                        isOnline: friend["isOnline"],
-                      ),
-                    ],
-                  ),
-                  title: Text(
-                    friend["name"],
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    friend["lastSeen"],
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: friend["isOnline"] 
-                          ? AppColors.success 
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                );
-              },
-            ),
           ),
         ],
       ),
