@@ -73,7 +73,7 @@ class _ChatListState extends State<ChatList> {
               final chat = chats[index];
               final isGroup = chat.type == ChatType.group;
               final name = chat.getChatName(_currentUserId);
-              final avatar = chat.getChatAvatar(_currentUserId) ?? "";
+              final avatar = chat.getChatAvatar(_currentUserId) ?? "Assets/Images/anh1.png";
               final lastMsg = chat.lastMessage?.content ?? "Chưa có tin nhắn";
               final time = chat.lastMessage?.formattedTime ?? "";
 

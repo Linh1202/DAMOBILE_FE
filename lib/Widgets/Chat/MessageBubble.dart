@@ -6,9 +6,11 @@ import 'package:open_filex/open_filex.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../Utils/Constants/AppColors.dart';
 import '../../Services/EmojiService.dart';
+import '../../Models/Reaction.dart';
 import '../Avatars/UserAvatar.dart';
 
 class MessageBubble extends StatefulWidget {
+  final String id;
   final String content;
   final String createdAt;
   final String senderId;
@@ -16,9 +18,12 @@ class MessageBubble extends StatefulWidget {
   final String avatarUrl;
   final bool showAvatar;
   final String? mediaUrl;
+  final List<Reaction> reactions;
+  final Function(String emoji)? onReaction;
 
   const MessageBubble({
     Key? key,
+    required this.id,
     required this.content,
     required this.createdAt,
     required this.senderId,
@@ -26,6 +31,8 @@ class MessageBubble extends StatefulWidget {
     required this.avatarUrl,
     this.showAvatar = true,
     this.mediaUrl,
+    this.reactions = const [],
+    this.onReaction,
   }) : super(key: key);
 
   @override
@@ -169,6 +176,51 @@ class _MessageBubbleState extends State<MessageBubble> {
     }
   }
 
+  void _showReactionPicker(BuildContext context) {
+    final List<String> defaultEmojis = EmojiService.getDefaultReactions();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        contentPadding: EdgeInsets.zero,
+        content: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: defaultEmojis.map((emoji) {
+              return GestureDetector(
+                onTap: () {
+                  widget.onReaction?.call(emoji);
+                  Navigator.pop(context);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    emoji,
+                    style: const TextStyle(fontSize: 24),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -192,132 +244,143 @@ class _MessageBubbleState extends State<MessageBubble> {
           Column(
             crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.65,
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: (widget.mediaUrl != null || EmojiService.isOnlyEmojis(widget.content)) ? 4 : 16,
-                  vertical: (widget.mediaUrl != null || EmojiService.isOnlyEmojis(widget.content)) ? 4 : 10,
-                ),
-                decoration: BoxDecoration(
-                  color: widget.mediaUrl == null && EmojiService.isOnlyEmojis(widget.content)
-                      ? Colors.transparent
-                      : (isMine ? AppColors.primary : AppColors.inputBackground),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(18),
-                    topRight: const Radius.circular(18),
-                    bottomLeft: Radius.circular(isMine ? 18 : 4),
-                    bottomRight: Radius.circular(isMine ? 4 : 18),
+              GestureDetector(
+                onLongPress: () => _showReactionPicker(context),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.65,
                   ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (widget.mediaUrl != null && widget.mediaUrl!.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => _handleMediaTap(context),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              _isImage && !_isFile
-                                  ? Image.network(
-                                      widget.mediaUrl!,
-                                      width: 200,
-                                      fit: BoxFit.cover,
-                                      loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null) return child;
-                                        return SizedBox(
-                                          width: 200,
-                                          height: 150,
-                                          child: Center(
-                                            child: CircularProgressIndicator(
-                                              value: loadingProgress.expectedTotalBytes != null
-                                                  ? loadingProgress.cumulativeBytesLoaded /
-                                                      loadingProgress.expectedTotalBytes!
-                                                  : null,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: (widget.mediaUrl != null || EmojiService.isOnlyEmojis(widget.content)) ? 4 : 16,
+                    vertical: (widget.mediaUrl != null || EmojiService.isOnlyEmojis(widget.content)) ? 4 : 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: widget.mediaUrl == null && EmojiService.isOnlyEmojis(widget.content)
+                        ? Colors.transparent
+                        : (isMine ? AppColors.primary : AppColors.inputBackground),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isMine ? 18 : 4),
+                      bottomRight: Radius.circular(isMine ? 4 : 18),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.mediaUrl != null && widget.mediaUrl!.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => _handleMediaTap(context),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                _isImage && !_isFile
+                                    ? Image.network(
+                                        widget.mediaUrl!,
+                                        width: 200,
+                                        fit: BoxFit.cover,
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return SizedBox(
+                                            width: 200,
+                                            height: 150,
+                                            child: Center(
+                                              child: CircularProgressIndicator(
+                                                value: loadingProgress.expectedTotalBytes != null
+                                                    ? loadingProgress.cumulativeBytesLoaded /
+                                                        loadingProgress.expectedTotalBytes!
+                                                    : null,
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
-                                          width: 200,
-                                          height: 100,
-                                          color: AppColors.inputBackground,
-                                          child: const Icon(Icons.broken_image, size: 40),
-                                        );
-                                      },
-                                    )
-                                  : Container(
-                                      width: 200,
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: isMine 
-                                            ? Colors.white.withOpacity(0.2) 
-                                            : AppColors.background,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            Icons.insert_drive_file,
-                                            size: 48,
-                                            color: isMine ? Colors.white : AppColors.primary,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            _isDownloading 
-                                                ? 'Đang tải ${(_downloadProgress * 100).toInt()}%'
-                                                : 'Nhấn để tải về',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: isMine 
-                                                  ? Colors.white.withOpacity(0.8)
-                                                  : AppColors.textSecondary,
+                                          );
+                                        },
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            width: 200,
+                                            height: 100,
+                                            color: AppColors.inputBackground,
+                                            child: const Icon(Icons.broken_image, size: 40),
+                                          );
+                                        },
+                                      )
+                                    : Container(
+                                        width: 200,
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: isMine 
+                                              ? Colors.white.withOpacity(0.2) 
+                                              : AppColors.background,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.insert_drive_file,
+                                              size: 48,
+                                              color: isMine ? Colors.white : AppColors.primary,
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              _isDownloading 
+                                                  ? 'Đang tải ${(_downloadProgress * 100).toInt()}%'
+                                                  : 'Nhấn để tải về',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isMine 
+                                                    ? Colors.white.withOpacity(0.8)
+                                                    : AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                              // Download progress overlay
-                              if (_isDownloading)
-                                Container(
-                                  width: 200,
-                                  height: _isImage ? 150 : 100,
-                                  color: Colors.black.withOpacity(0.5),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      value: _downloadProgress,
-                                      color: Colors.white,
+                                // Download progress overlay
+                                if (_isDownloading)
+                                  Container(
+                                    width: 200,
+                                    height: _isImage ? 150 : 100,
+                                    color: Colors.black.withOpacity(0.5),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        value: _downloadProgress,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    if (widget.content.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(
-                          top: widget.mediaUrl != null ? 8 : 0,
-                          left: widget.mediaUrl != null ? 8 : 0,
-                          right: widget.mediaUrl != null ? 8 : 0,
-                          bottom: widget.mediaUrl != null ? 4 : 0,
-                        ),
-                        child: Text(
-                          widget.content,
-                          style: TextStyle(
-                            fontSize: EmojiService.isOnlyEmojis(widget.content) ? 32 : 15,
-                            color: isMine ? Colors.white : AppColors.textPrimary,
+                      if (widget.content.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: widget.mediaUrl != null ? 8 : 0,
+                            left: widget.mediaUrl != null ? 8 : 0,
+                            right: widget.mediaUrl != null ? 8 : 0,
+                            bottom: widget.mediaUrl != null ? 4 : 0,
+                          ),
+                          child: Text(
+                            widget.content,
+                            style: TextStyle(
+                              fontSize: EmojiService.isOnlyEmojis(widget.content) ? 32 : 15,
+                              color: isMine ? Colors.white : AppColors.textPrimary,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+              if (widget.reactions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(
+                    spacing: 4,
+                    children: _buildReactionWidgets(),
+                  ),
+                ),
               const SizedBox(height: 4),
               Text(
                 widget.createdAt,
@@ -331,6 +394,54 @@ class _MessageBubbleState extends State<MessageBubble> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildReactionWidgets() {
+    // Group reactions by emoji
+    final Map<String, int> counts = {};
+    for (var r in widget.reactions) {
+      counts[r.emoji] = (counts[r.emoji] ?? 0) + 1;
+    }
+
+    return counts.entries.map((entry) {
+      final bool alreadyReacted = widget.reactions.any(
+        (r) => r.userId == widget.currentUserId && r.emoji == entry.key
+      );
+
+      return GestureDetector(
+        onTap: () => widget.onReaction?.call(entry.key),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: alreadyReacted 
+                ? AppColors.primary.withOpacity(0.1) 
+                : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: alreadyReacted ? AppColors.primary : AppColors.border,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(entry.key, style: const TextStyle(fontSize: 12)),
+              if (entry.value > 1) ...[
+                const SizedBox(width: 2),
+                Text(
+                  entry.value.toString(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: alreadyReacted ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }).toList();
   }
 }
 
