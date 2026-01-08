@@ -567,6 +567,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                             final bool showAvatar = !isMine && (messageIndex == 0 || prevIsMine != isMine);
 
                             return MessageBubble(
+                              id: message.id,
                               content: message.content,
                               createdAt: message.formattedTime,
                               senderId: message.senderId,
@@ -574,6 +575,8 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                               avatarUrl: widget.avatarUrl,
                               showAvatar: showAvatar,
                               mediaUrl: message.mediaUrl,
+                              reactions: message.reactions,
+                              onReaction: (emoji) => _sendReaction(message.id, emoji),
                             );
                           },
                         ),
