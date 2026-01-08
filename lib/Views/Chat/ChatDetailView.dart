@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:doanmobile/Providers/SocketProvider.dart';
 import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/ChatService.dart';
 import 'package:doanmobile/Services/MediaService.dart';
+import 'package:doanmobile/Services/EmojiService.dart';
 import 'package:doanmobile/Models/Message.dart';
 import 'package:doanmobile/Models/Reaction.dart';
 import 'package:doanmobile/Models/Api/SocketMessage.dart';
@@ -45,6 +47,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   final ChatService _chatService = ChatService();
   final MediaService _mediaService = MediaService();
   final ImagePicker _imagePicker = ImagePicker();
+  final FocusNode _focusNode = FocusNode();
 
   List<Message> _messages = [];
   String _currentUserId = "";
@@ -52,6 +55,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   bool _isLoading = true;
   bool _isTyping = false;
   bool _isUploading = false;
+  bool _showEmoji = false;
   String _uploadingLabel = 'Đang gửi...';
   String? _typingUser;
 
@@ -59,6 +63,13 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   void initState() {
     super.initState();
     _initChat();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        setState(() {
+          _showEmoji = false;
+        });
+      }
+    });
   }
 
   Future<void> _initChat() async {
@@ -492,107 +503,173 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? const Center(child: Text('Chưa có tin nhắn'))
-                    : ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: _messages.length + (_isTyping ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          // Show typing indicator at the top (index 0) when reversed
-                          if (_isTyping && index == 0) {
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 8, top: 8),
-                              child: Row(
-                                children: [
-                                  UserAvatar(
-                                    imagePath: widget.avatarUrl,
-                                    name: widget.name,
-                                    size: 28,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_typingUser ?? widget.name} đang gõ...',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontStyle: FontStyle.italic,
+      body: WillPopScope(
+        onWillPop: () {
+          if (_showEmoji) {
+            setState(() {
+              _showEmoji = false;
+            });
+            return Future.value(false);
+          }
+          return Future.value(true);
+        },
+        child: Column(
+          children: [
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _messages.isEmpty
+                      ? const Center(child: Text('Chưa có tin nhắn'))
+                      : ListView.builder(
+                          controller: _scrollController,
+                          reverse: true,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          itemCount: _messages.length + (_isTyping ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            // Show typing indicator at the top (index 0) when reversed
+                            if (_isTyping && index == 0) {
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 8, top: 8),
+                                child: Row(
+                                  children: [
+                                    UserAvatar(
+                                      imagePath: widget.avatarUrl,
+                                      name: widget.name,
+                                      size: 28,
                                     ),
-                                  ),
-                                ],
-                              ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${_typingUser ?? widget.name} đang gõ...',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            // Adjust index for reversed list
+                            final messageIndex = _isTyping 
+                                ? _messages.length - index 
+                                : _messages.length - 1 - index;
+                            
+                            if (messageIndex < 0 || messageIndex >= _messages.length) {
+                              return const SizedBox.shrink();
+                            }
+
+                            final message = _messages[messageIndex];
+                            final bool isMine = _isMine(message.senderId);
+                            final bool prevIsMine = messageIndex > 0 
+                                ? _isMine(_messages[messageIndex - 1].senderId) 
+                                : !isMine;
+                            final bool showAvatar = !isMine && (messageIndex == 0 || prevIsMine != isMine);
+
+                            return MessageBubble(
+                              content: message.content,
+                              createdAt: message.formattedTime,
+                              senderId: message.senderId,
+                              currentUserId: _currentUserId,
+                              avatarUrl: widget.avatarUrl,
+                              showAvatar: showAvatar,
+                              mediaUrl: message.mediaUrl,
                             );
-                          }
-
-                          // Adjust index for reversed list
-                          final messageIndex = _isTyping 
-                              ? _messages.length - index 
-                              : _messages.length - 1 - index;
-                          
-                          if (messageIndex < 0 || messageIndex >= _messages.length) {
-                            return const SizedBox.shrink();
-                          }
-
-                          final message = _messages[messageIndex];
-                          final bool isMine = _isMine(message.senderId);
-                          final bool prevIsMine = messageIndex > 0 
-                              ? _isMine(_messages[messageIndex - 1].senderId) 
-                              : !isMine;
-                          final bool showAvatar = !isMine && (messageIndex == 0 || prevIsMine != isMine);
-
-                          return MessageBubble(
-                            content: message.content,
-                            createdAt: message.formattedTime,
-                            senderId: message.senderId,
-                            currentUserId: _currentUserId,
-                            avatarUrl: widget.avatarUrl,
-                            showAvatar: showAvatar,
-                            mediaUrl: message.mediaUrl,
-                          );
-                        },
+                          },
+                        ),
+            ),
+            // Upload loading indicator
+            if (_isUploading)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.primary.withOpacity(0.1),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
                       ),
-          ),
-          // Upload loading indicator
-          if (_isUploading)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppColors.primary.withOpacity(0.1),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _uploadingLabel,
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ChatInputBar(
+              controller: _messageController,
+              focusNode: _focusNode,
+              onSend: _sendMessage,
+              onChanged: (_) => _onTyping(),
+              onAttachment: _showMediaPicker,
+              onEmoji: () {
+                setState(() {
+                  _showEmoji = !_showEmoji;
+                  if (_showEmoji) {
+                    _focusNode.unfocus();
+                  } else {
+                    _focusNode.requestFocus();
+                  }
+                });
+              },
+              onVoice: () {
+                // TODO: Voice message
+              },
+            ),
+            if (_showEmoji)
+              SizedBox(
+                height: 250,
+                child: EmojiPicker(
+                  onEmojiSelected: (Category? category, Emoji emoji) {
+                    _messageController.text = _messageController.text + emoji.emoji;
+                    _onTyping();
+                    EmojiService.addRecentEmoji(emoji.emoji);
+                  },
+                  onBackspacePressed: () {
+                    final text = _messageController.text;
+                    if (text.isNotEmpty) {
+                      _messageController.text = text.characters.skipLast(1).toString();
+                    }
+                  },
+                  config: Config(
+                    height: 256,
+                    checkPlatformCompatibility: true,
+                    emojiViewConfig: EmojiViewConfig(
+                      columns: 7,
+                      emojiSizeMax: 32 * (Platform.isIOS ? 1.30 : 1.0),
+                      verticalSpacing: 0,
+                      horizontalSpacing: 0,
+                      gridPadding: EdgeInsets.zero,
+                      backgroundColor: AppColors.background,
+                      buttonMode: ButtonMode.MATERIAL,
+                      loadingIndicator: const SizedBox.shrink(),
+                      noRecents: const Text(
+                        'Chưa có emoji gần đây',
+                        style: TextStyle(fontSize: 20, color: Colors.black26),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    categoryViewConfig: CategoryViewConfig(
+                      indicatorColor: AppColors.primary,
+                      iconColor: Colors.grey,
+                      iconColorSelected: AppColors.primary,
+                      backspaceColor: AppColors.primary,
+                      backgroundColor: AppColors.background,
+                    ),
+                    skinToneConfig: const SkinToneConfig(
+                      dialogBackgroundColor: Colors.white,
+                      indicatorColor: Colors.grey,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    _uploadingLabel,
-                    style: TextStyle(color: AppColors.primary),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ChatInputBar(
-            controller: _messageController,
-            onSend: _sendMessage,
-            onChanged: (_) => _onTyping(),
-            onAttachment: _showMediaPicker,
-            onEmoji: () {
-              // TODO: Emoji picker
-            },
-            onVoice: () {
-              // TODO: Voice message
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -698,6 +775,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     ref.read(socketServiceProvider).leaveRoom(widget.chatId);
     _messageController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 }
