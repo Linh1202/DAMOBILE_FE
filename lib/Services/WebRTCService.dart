@@ -336,14 +336,14 @@ class WebRTCService {
     if (isRoom && roomId != null) {
       SocketService.instance.sendRoomCall(
         roomId: roomId,
-        type: type,
-        payload: payload,
+        signalingType: type,
+        signalingPayload: payload,
       );
     } else if (targetId != null) {
       SocketService.instance.sendDirectCall(
         targetUserId: targetId,
-        type: type,
-        payload: payload,
+        signalingType: type,
+        signalingPayload: payload,
       );
     }
   }
