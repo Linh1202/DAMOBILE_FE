@@ -281,6 +281,19 @@ class SocketService {
     ));
   }
 
+  void broadcastUserOnlineStatus(String userId, bool isOnline) {
+    print('🟢 WS broadcastUserOnlineStatus: userId=$userId, isOnline=$isOnline');
+    final message = SocketMessage(
+      type: MessageType.notification,
+      content: isOnline ? 'online' : 'offline',
+      payload: {
+        'user_id': userId,
+        'is_online': isOnline,
+      },
+    );
+    _messageController.add(message);
+  }
+
   void close() {
     print('🔌 WS closing connection...');
     _cancelReconnectTimer();

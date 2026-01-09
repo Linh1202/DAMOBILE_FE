@@ -10,6 +10,7 @@ class SocketMessage {
   final String? content;
   final dynamic payload;
   final DateTime? timestamp;
+  final bool? isOnline;
 
   SocketMessage({
     required this.type,
@@ -21,6 +22,7 @@ class SocketMessage {
     this.content,
     this.payload,
     this.timestamp,
+    this.isOnline,
   });
 
   factory SocketMessage.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class SocketMessage {
       timestamp: json['timestamp'] != null
           ? DateTime.tryParse(json['timestamp'].toString())
           : null,
+      isOnline: json['is_online'] as bool?,
     );
   }
 
@@ -53,6 +56,7 @@ class SocketMessage {
     if (content != null) data['content'] = content;
     if (payload != null) data['payload'] = payload;
     if (timestamp != null) data['timestamp'] = timestamp!.toIso8601String();
+    if (isOnline != null) data['is_online'] = isOnline;
 
     return data;
   }

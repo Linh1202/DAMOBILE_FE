@@ -5,6 +5,7 @@ class User {
   final String? avatarUrl;
   final String? bio;
   final String? phoneNumber;
+  final bool isOnline;
 
   User({
     required this.id,
@@ -13,6 +14,7 @@ class User {
     this.avatarUrl,
     this.bio,
     this.phoneNumber,
+    this.isOnline = false,
   });
 
   factory User.fromJson(dynamic json) {
@@ -26,6 +28,7 @@ class User {
       avatarUrl: data['avatar_url'] ?? data['avatarUrl'],
       bio: data['bio'],
       phoneNumber: data['phone_number'] ?? data['phoneNumber'] ?? data['phone_Number'],
+      isOnline: data['is_online'] as bool? ?? false,
     );
   }
 
@@ -37,6 +40,7 @@ class User {
       'avatar_url': avatarUrl,
       'bio': bio,
       'phone_number': phoneNumber,
+      'is_online': isOnline,
     };
   }
 }

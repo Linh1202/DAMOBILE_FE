@@ -94,21 +94,18 @@ class _CreateGroupViewState extends State<CreateGroupView> {
     setState(() => _isLoading = true);
 
     try {
-      // Bước 1: Tạo nhóm
       final chat = await _groupService.createGroup(
         name: txtGroupName.text.trim(),
         description: '',
         creatorId: _currentUserId,
       );
 
-      // Bước 2: Thêm các member đã chọn vào nhóm
       for (final memberId in selectedMemberIds) {
         await _groupService.addMember(chat.id, memberId);
       }
 
       DialogHandler.showSuccess("Tạo nhóm thành công!");
 
-      // Navigate đến ChatDetailView của nhóm vừa tạo
       if (mounted) {
         Navigator.pushReplacement(
           context,
