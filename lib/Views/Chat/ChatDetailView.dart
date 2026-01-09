@@ -910,21 +910,20 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
 
                             final message = _messages[messageIndex];
                             final bool isMine = _isMine(message.senderId);
-                            final bool prevIsMine = messageIndex > 0 
-                                ? _isMine(_messages[messageIndex - 1].senderId) 
-                                : !isMine;
-                            final bool showAvatar = !isMine && (messageIndex == 0 || prevIsMine != isMine);
                             
                             // Kiểm tra xem tin nhắn trước đó có phải từ cùng người gửi không
                             final bool prevSameSender = messageIndex > 0 
                                 ? _messages[messageIndex - 1].senderId == message.senderId
                                 : false;
+                            
+                            final bool showAvatar = !isMine && (messageIndex == 0 || !prevSameSender);
+                            
                             // Hiển thị tên người gửi nếu là group chat và là tin đầu tiên trong chuỗi
                             final bool showSenderName = widget.isGroup && !isMine && !prevSameSender;
 
                             // Lấy avatar của người gửi: trong group chat lấy từ _participantAvatars, chat 1-1 dùng widget.avatarUrl
                             final senderAvatarUrl = widget.isGroup
-                                ? (message.senderAvatarUrl ?? _participantAvatars[message.senderId] ?? widget.avatarUrl)
+                                ? (message.senderAvatarUrl ?? _participantAvatars[message.senderId] ?? "")
                                 : widget.avatarUrl;
 
                             return MessageBubble(
