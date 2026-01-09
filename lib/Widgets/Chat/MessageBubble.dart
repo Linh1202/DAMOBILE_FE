@@ -202,23 +202,26 @@ class _MessageBubbleState extends State<MessageBubble> {
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: defaultEmojis.map((emoji) {
-              return GestureDetector(
-                onTap: () {
-                  widget.onReaction?.call(emoji);
-                  Navigator.pop(context);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    emoji,
-                    style: const TextStyle(fontSize: 24),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: defaultEmojis.map((emoji) {
+                return GestureDetector(
+                  onTap: () {
+                    widget.onReaction?.call(emoji);
+                    Navigator.pop(context);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      emoji,
+                      style: const TextStyle(fontSize: 24),
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
         ),
       ),
@@ -393,9 +396,15 @@ class _MessageBubbleState extends State<MessageBubble> {
               if (widget.reactions.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Wrap(
-                    spacing: 4,
-                    children: _buildReactionWidgets(),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.65,
+                    ),
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: _buildReactionWidgets(),
+                    ),
                   ),
                 ),
               const SizedBox(height: 4),
