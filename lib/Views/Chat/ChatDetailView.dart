@@ -62,6 +62,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   String _uploadingLabel = 'Đang gửi...';
   String? _typingUser;
   Map<String, String> _participantNames = {};
+  Map<String, String> _participantAvatars = {}; // Lưu avatar của từng người tham gia
   SocketService? _socketService;
   String? _creatorId;
 
@@ -97,10 +98,13 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
               orElse: () => "",
             );
           }
-          // Tạo map participantNames từ participantDetails
+          // Tạo map participantNames và participantAvatars từ participantDetails
           if (chat.participantDetails != null) {
             for (final participant in chat.participantDetails!) {
               _participantNames[participant.id] = participant.fullName;
+              if (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty) {
+                _participantAvatars[participant.id] = participant.avatarUrl!;
+              }
             }
           }
         });
@@ -918,13 +922,18 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                             // Hiển thị tên người gửi nếu là group chat và là tin đầu tiên trong chuỗi
                             final bool showSenderName = widget.isGroup && !isMine && !prevSameSender;
 
+                            // Lấy avatar của người gửi: trong group chat lấy từ _participantAvatars, chat 1-1 dùng widget.avatarUrl
+                            final senderAvatarUrl = widget.isGroup
+                                ? (message.senderAvatarUrl ?? _participantAvatars[message.senderId] ?? widget.avatarUrl)
+                                : widget.avatarUrl;
+
                             return MessageBubble(
                               id: message.id,
                               content: message.content,
                               createdAt: message.formattedTime,
                               senderId: message.senderId,
                               currentUserId: _currentUserId,
-                              avatarUrl: widget.avatarUrl,
+                              avatarUrl: senderAvatarUrl,
                               showAvatar: showAvatar,
                               mediaUrl: message.mediaUrl,
                               reactions: message.reactions,

@@ -1,4 +1,6 @@
 import 'package:doanmobile/Services/AuthStorage.dart';
+import 'package:doanmobile/Services/FriendService.dart';
+import 'package:doanmobile/Services/NotificationService.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:doanmobile/Providers/SocketProvider.dart';
 import 'package:doanmobile/Providers/CallProvider.dart';
@@ -24,6 +26,8 @@ class HomeView extends ConsumerStatefulWidget {
 
 class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver {
   int selectedIndex = 0;
+  int _friendRequestCount = 0;
+  int _notificationCount = 0;
 
   @override
   void initState() {
@@ -34,7 +38,37 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     // Connect to socket via provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(socketServiceProvider).connect();
+      _loadFriendRequestCount();
+      _loadNotificationCount();
     });
+  }
+
+  Future<void> _loadNotificationCount() async {
+    try {
+      final notificationService = NotificationService();
+      final count = await notificationService.getUnreadCount();
+      if (mounted) {
+        setState(() {
+          _notificationCount = count;
+        });
+      }
+    } catch (e) {
+      print('Error loading notification count: $e');
+    }
+  }
+
+  Future<void> _loadFriendRequestCount() async {
+    try {
+      final friendService = FriendService();
+      final requests = await friendService.getPendingRequests();
+      if (mounted) {
+        setState(() {
+          _friendRequestCount = requests.length;
+        });
+      }
+    } catch (e) {
+      print('Error loading friend request count: $e');
+    }
   }
 
   @override
@@ -107,14 +141,20 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     );
   }
 
-  static List<Widget> _buildWidgetOptions() {
-    return <Widget>[ChatList(), FriendsView(), SettingsView()];
+  List<Widget> _buildWidgetOptions() {
+    return <Widget>[
+      ChatList(),
+      FriendsView(onRequestCountChanged: _loadFriendRequestCount),
+      SettingsView(),
+    ];
   }
 
   void onItemTapped(int index) {
     setState(() {
       selectedIndex = index;
     });
+    // Refresh friend request count khi chuyển tab
+    _loadFriendRequestCount();
   }
 
   Future<void> clickLogout() async {
@@ -158,13 +198,29 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       }
     });
 
+    // Listen for new notifications via WebSocket to auto-update badge
+    ref.listen(socketMessageStreamProvider, (previous, next) {
+      next.whenData((message) {
+        final typeValue = message.type.value;
+        if (typeValue == 'FRIEND_REQUEST' || typeValue == 'NOTIFICATION' || typeValue == 'NEW_MESSAGE') {
+          // Reload notification count when new notification arrives
+          _loadNotificationCount();
+        }
+      });
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: HomeAppBar(title: _getTitle()),
+      appBar: HomeAppBar(
+        title: _getTitle(),
+        notificationCount: _notificationCount,
+        onNotificationCountChanged: _loadNotificationCount,
+      ),
       body: widgetOptions.elementAt(selectedIndex),
       bottomNavigationBar: HomeBottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: onItemTapped,
+        friendRequestCount: _friendRequestCount,
       ),
     );
   }

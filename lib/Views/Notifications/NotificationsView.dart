@@ -1,70 +1,108 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../Utils/Constants/AppColors.dart';
 import '../../Widgets/Notifications/NotificationItem.dart';
+import '../../Models/Notification.dart';
+import '../../Models/Chat.dart';
+import '../../Services/NotificationService.dart';
+import '../../Services/ChatService.dart';
+import '../../Providers/SocketProvider.dart';
+import '../../Views/Chat/ChatDetailView.dart';
+import '../../Utils/AppGlobals.dart';
 
-class NotificationsView extends StatefulWidget {
+class NotificationsView extends ConsumerStatefulWidget {
   @override
-  _NotificationsViewState createState() => _NotificationsViewState();
+  ConsumerState<NotificationsView> createState() => _NotificationsViewState();
 }
 
-class _NotificationsViewState extends State<NotificationsView> {
-  // Mock data - Danh sách thông báo
-  List<Map<String, dynamic>> _notifications = [
-    {
-      "id": "1",
-      "type": NotificationType.message,
-      "title": "Tin nhắn mới từ Minh Anh",
-      "content": "Chiều nay đi cafe nhé!",
-      "time": "10:30 29-12",
-      "isRead": false,
-    },
-    {
-      "id": "2",
-      "type": NotificationType.friendRequest,
-      "title": "Lời mời kết bạn",
-      "content": "Thu Thảo đã gửi lời mời kết bạn",
-      "time": "08:00 29-12",
-      "isRead": false,
-    },
-    {
-      "id": "3",
-      "type": NotificationType.missedCall,
-      "title": "Cuộc gọi nhỡ",
-      "content": "Tuấn Kiệt đã gọi cho bạn",
-      "time": "16:00 28-12",
-      "isRead": true,
-    },
-    {
-      "id": "4",
-      "type": NotificationType.groupInvite,
-      "title": "Lời mời vào nhóm",
-      "content": "Bạn được mời vào nhóm Team Dev Frontend",
-      "time": "14:00 28-12",
-      "isRead": true,
-    },
-  ];
+class _NotificationsViewState extends ConsumerState<NotificationsView> {
+  final NotificationService _notificationService = NotificationService();
+  List<AppNotification> _notifications = [];
+  bool _isLoading = true;
 
-  void _markAsRead(String id) {
-    setState(() {
-      final index = _notifications.indexWhere((n) => n["id"] == id);
-      if (index != -1) {
-        _notifications[index]["isRead"] = true;
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
   }
 
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification["isRead"] = true;
+  Future<void> _loadNotifications() async {
+    try {
+      final notifications = await _notificationService.getNotifications();
+      if (mounted) {
+        setState(() {
+          _notifications = notifications;
+          _isLoading = false;
+        });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải thông báo: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
-  int get _unreadCount => _notifications.where((n) => !n["isRead"]).length;
+  Future<void> _markAsRead(String id) async {
+    try {
+      final success = await _notificationService.markAsRead(id);
+      if (success && mounted) {
+        setState(() {
+          final index = _notifications.indexWhere((n) => n.id == id);
+          if (index != -1) {
+            _notifications[index] = _notifications[index].copyWith(isRead: true);
+          }
+        });
+      }
+    } catch (e) {
+      print('Error marking as read: $e');
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    try {
+      final success = await _notificationService.markAllAsRead();
+      if (success && mounted) {
+        setState(() {
+          _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã đánh dấu tất cả đã đọc'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
+
+  String _getTitleForType(AppNotification notification) {
+    switch (notification.notificationType) {
+      case NotificationType.message:
+        return 'Tin nhắn mới';
+      case NotificationType.friendRequest:
+        return 'Lời mời kết bạn';
+      default:
+        return 'Thông báo';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(socketMessageStreamProvider, (previous, next) {
+      next.whenData((message) {
+        final typeValue = message.type.value;
+        if (typeValue == 'FRIEND_REQUEST' || typeValue == 'NOTIFICATION' || typeValue == 'CHAT_MESSAGE') {
+          _loadNotifications();
+        }
+      });
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -97,42 +135,80 @@ class _NotificationsViewState extends State<NotificationsView> {
           ),
         ],
       ),
-      body: _notifications.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              itemCount: _notifications.length,
-              itemBuilder: (context, index) {
-                final notification = _notifications[index];
-                return NotificationItem(
-                  type: notification["type"],
-                  title: notification["title"],
-                  content: notification["content"],
-                  time: notification["time"],
-                  isRead: notification["isRead"],
-                  onTap: () {
-                    _markAsRead(notification["id"]);
-                    _handleNotificationTap(notification);
-                  },
-                );
-              },
-            ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? _buildEmptyState()
+              : RefreshIndicator(
+                  onRefresh: _loadNotifications,
+                  child: ListView.builder(
+                    itemCount: _notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = _notifications[index];
+                      final notifType = notification.notificationType;
+                      if (notifType == null) return SizedBox.shrink();
+                      
+                      return NotificationItem(
+                        type: notifType,
+                        title: _getTitleForType(notification),
+                        content: notification.content,
+                        time: notification.formattedTime,
+                        isRead: notification.isRead,
+                        onTap: () {
+                          _markAsRead(notification.id);
+                          _handleNotificationTap(notification);
+                        },
+                      );
+                    },
+                  ),
+                ),
     );
   }
 
-  void _handleNotificationTap(Map<String, dynamic> notification) {
-    switch (notification["type"]) {
-      case NotificationType.message:
-        // TODO: Mở chat tương ứng
-        break;
-      case NotificationType.friendRequest:
-        // TODO: Mở tab lời mời kết bạn
-        break;
-      case NotificationType.missedCall:
-        // TODO: Gọi lại
-        break;
-      case NotificationType.groupInvite:
-        // TODO: Mở nhóm
-        break;
+  void _handleNotificationTap(AppNotification notification) async {
+    final actionUrl = notification.actionUrl;
+    if (actionUrl == null || actionUrl.isEmpty) return;
+
+    if (actionUrl.startsWith('/chat/')) {
+      final chatId = actionUrl.replaceFirst('/chat/', '');
+      if (chatId.isNotEmpty) {
+        try {
+          final chatService = ChatService();
+          final chat = await chatService.getChatById(chatId);
+          if (chat != null && mounted) {
+            String chatName = chat.name ?? 'Chat';
+            String chatAvatar = '';
+            bool isGroup = chat.type == ChatType.group;
+            
+            if (!isGroup && chat.participantDetails != null && chat.participantDetails!.isNotEmpty) {
+              final otherUser = chat.participantDetails!.firstWhere(
+                (u) => u.id != notification.recipientId,
+                orElse: () => chat.participantDetails!.first,
+              );
+              chatName = otherUser.fullName;
+              chatAvatar = otherUser.avatarUrl ?? '';
+            }
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatDetailView(
+                  chatId: chat.id,
+                  name: chatName,
+                  avatarUrl: chatAvatar,
+                  isGroup: isGroup,
+                ),
+              ),
+            );
+          }
+        } catch (e) {
+          print('Error navigating to chat: $e');
+        }
+      }
+    }
+    else if (actionUrl == '/friend/requests') {
+      Navigator.pop(context);
+      AppGlobals.itemBarIndex = 1;
     }
   }
 

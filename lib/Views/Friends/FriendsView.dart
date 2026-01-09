@@ -11,8 +11,13 @@ import '../../Models/User.dart';
 import '../../Models/FriendRequest.dart' as model;
 import '../../Models/Chat.dart';
 import '../../Views/Chat/ChatDetailView.dart';
+import '../../Services/AuthStorage.dart';
 
 class FriendsView extends StatefulWidget {
+  final VoidCallback? onRequestCountChanged;
+  
+  const FriendsView({Key? key, this.onRequestCountChanged}) : super(key: key);
+  
   @override
   _FriendsViewState createState() => _FriendsViewState();
 }
@@ -33,12 +38,23 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
   bool _isLoadingFriends = true;
   bool _isLoadingRequests = true;
   bool _isSearching = false;
+  String _currentUserId = '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadCurrentUser();
     _loadData();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthStorage.readUser();
+    if (mounted) {
+      setState(() {
+        _currentUserId = user?['id']?.toString() ?? user?['_id']?.toString() ?? '';
+      });
+    }
   }
 
   @override
@@ -132,12 +148,15 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
 
       if (mounted) {
         setState(() {
-          _searchResults = users.map((user) => {
+          // Lọc bỏ user hiện tại khỏi kết quả tìm kiếm
+          _searchResults = users
+              .where((user) => user.id != _currentUserId)
+              .map((user) => {
             "id": user.id,
             "name": user.fullName,
             "avatarUrl": user.avatarUrl ?? "Assets/Images/anh1.png",
             "email": user.email,
-            "status": FriendStatus.none, // TODO: Check actual friend status
+            "status": FriendStatus.none,
           }).toList();
           _isSearching = false;
         });
@@ -161,6 +180,7 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
         setState(() {
           _friendRequests.removeWhere((req) => req.id == id);
         });
+        widget.onRequestCountChanged?.call(); // Thông báo cho parent
         DialogHandler.showSuccess(response.message.isNotEmpty ? response.message : "Đã chấp nhận lời mời kết bạn");
         _loadFriends(); // Reload friend list
       } else {
@@ -182,6 +202,7 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
         setState(() {
           _friendRequests.removeWhere((req) => req.id == id);
         });
+        widget.onRequestCountChanged?.call(); // Thông báo cho parent
         DialogHandler.showSuccess(response.message.isNotEmpty ? response.message : "Đã từ chối lời mời");
       } else {
         DialogHandler.showError(response.message);

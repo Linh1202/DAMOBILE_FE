@@ -6,8 +6,15 @@ import 'package:doanmobile/Views/Group/CreateGroupView.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final int notificationCount;
+  final VoidCallback? onNotificationCountChanged;
 
-  HomeAppBar({Key? key, required this.title}) : super(key: key);
+  HomeAppBar({
+    Key? key,
+    required this.title,
+    this.notificationCount = 0,
+    this.onNotificationCountChanged,
+  }) : super(key: key);
 
   @override
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
@@ -28,7 +35,6 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
-        // Nút 1: Tìm kiếm
         IconButton(
           icon: Icon(Icons.search, color: AppColors.textPrimary),
           onPressed: () {
@@ -38,7 +44,6 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             );
           },
         ),
-        // Nút 2: Thông báo với badge
         Stack(
           children: [
             IconButton(
@@ -46,37 +51,38 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Icons.notifications_outlined,
                 color: AppColors.textPrimary,
               ),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => NotificationsView()),
                 );
+                onNotificationCountChanged?.call();
               },
             ),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                constraints: BoxConstraints(minWidth: 16, minHeight: 16),
-                child: Text(
-                  '2',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+            if (notificationCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
                   ),
-                  textAlign: TextAlign.center,
+                  constraints: BoxConstraints(minWidth: 16, minHeight: 16),
+                  child: Text(
+                    notificationCount > 99 ? '99+' : '$notificationCount',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
-        // Nút 3: Tạo nhóm
         IconButton(
           icon: Icon(Icons.group_add_outlined, color: AppColors.textPrimary),
           onPressed: () {

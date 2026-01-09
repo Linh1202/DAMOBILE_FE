@@ -234,7 +234,7 @@ class _MessageBubbleState extends State<MessageBubble> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMine && widget.showAvatar)
             Padding(

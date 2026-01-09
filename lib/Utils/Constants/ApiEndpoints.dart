@@ -36,6 +36,12 @@ class ApiEndpoints {
   static const String groupDissolve = '/group/dissolve';
   static const String groupLeave = '/group/leave';
 
+  // Notifications
+  static const String notification = '/notification';
+  static const String notificationUnreadCount = '/notification/unread/count';
+  static const String notificationReadAll = '/notification/read-all';
+  static String notificationMarkRead(String id) => '/notification/$id/read';
+
   // WebSocket
   static const String ws = '/ws';
 }

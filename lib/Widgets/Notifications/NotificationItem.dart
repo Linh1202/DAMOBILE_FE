@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../Utils/Constants/AppColors.dart';
-
-/// Loại thông báo
-enum NotificationType {
-  message,      // Tin nhắn mới
-  friendRequest, // Lời mời kết bạn
-  missedCall,   // Cuộc gọi nhỡ
-  groupInvite,  // Lời mời vào nhóm
-}
+import '../../Models/Notification.dart';
 
 /// Widget hiển thị một thông báo
 class NotificationItem extends StatelessWidget {
@@ -34,10 +27,6 @@ class NotificationItem extends StatelessWidget {
         return Icons.chat_bubble_outline;
       case NotificationType.friendRequest:
         return Icons.person_add_outlined;
-      case NotificationType.missedCall:
-        return Icons.phone_missed_outlined;
-      case NotificationType.groupInvite:
-        return Icons.group_add_outlined;
     }
   }
 
@@ -47,10 +36,6 @@ class NotificationItem extends StatelessWidget {
         return AppColors.primary;
       case NotificationType.friendRequest:
         return Colors.purple;
-      case NotificationType.missedCall:
-        return Colors.green;
-      case NotificationType.groupInvite:
-        return Colors.orange;
     }
   }
 
