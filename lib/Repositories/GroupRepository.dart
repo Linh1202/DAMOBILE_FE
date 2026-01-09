@@ -73,4 +73,26 @@ class GroupRepository {
       throw Exception('Lỗi xóa thành viên khỏi nhóm: $e');
     }
   }
+
+  Future<bool> dissolveGroup(String groupId) async {
+    try {
+      final response = await _apiService.deleteWithAuth(ApiEndpoints.groupDissolve, {
+        'groupId': groupId,
+      });
+      return response['success'] == true;
+    } catch (e) {
+      throw Exception('Lỗi giải tán nhóm: $e');
+    }
+  }
+
+  Future<bool> leaveGroup(String groupId) async {
+    try {
+      final response = await _apiService.postWithAuth(ApiEndpoints.groupLeave, {
+        'groupId': groupId,
+      });
+      return response['success'] == true;
+    } catch (e) {
+      throw Exception('Lỗi rời khỏi nhóm: $e');
+    }
+  }
 }

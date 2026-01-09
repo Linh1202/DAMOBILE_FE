@@ -6,10 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:doanmobile/Providers/SocketProvider.dart';
+import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Services/AuthStorage.dart';
 import 'package:doanmobile/Services/ChatService.dart';
 import 'package:doanmobile/Services/MediaService.dart';
 import 'package:doanmobile/Services/EmojiService.dart';
+import 'package:doanmobile/Services/FriendService.dart';
+import 'package:doanmobile/Services/GroupService.dart';
 import 'package:doanmobile/Models/Message.dart';
 import 'package:doanmobile/Models/Reaction.dart';
 import 'package:doanmobile/Models/Api/SocketMessage.dart';
@@ -58,6 +61,11 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   bool _showEmoji = false;
   String _uploadingLabel = 'Đang gửi...';
   String? _typingUser;
+  Map<String, String> _participantNames = {};
+  SocketService? _socketService;
+  String? _creatorId;
+
+  bool get _isCreator => _creatorId != null && _creatorId == _currentUserId;
 
   @override
   void initState() {
@@ -78,19 +86,42 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     _currentUserId = user?['id']?.toString() ?? user?['_id']?.toString() ?? "";
     print('👤 _initChat: user=$user, _currentUserId=$_currentUserId');
 
-    if (!widget.isGroup) {
-      try {
-        final chat = await _chatService.getChatById(widget.chatId);
-        if (mounted) {
-          setState(() {
+    // Load chat details để lấy participant names
+    try {
+      final chat = await _chatService.getChatById(widget.chatId);
+      if (mounted) {
+        setState(() {
+          if (!widget.isGroup) {
             _targetUserId = chat.participants.firstWhere(
               (id) => id != _currentUserId,
               orElse: () => "",
             );
+          }
+          // Tạo map participantNames từ participantDetails
+          if (chat.participantDetails != null) {
+            for (final participant in chat.participantDetails!) {
+              _participantNames[participant.id] = participant.fullName;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print("Error fetching chat details: $e");
+    }
+
+    // Load creatorId từ Group API (vì Chat entity không có creator_id)
+    if (widget.isGroup) {
+      try {
+        final groupService = GroupService();
+        final group = await groupService.getGroupById(widget.chatId);
+        if (mounted) {
+          setState(() {
+            _creatorId = group.creatorId;
+            print('🔍 DEBUG: group.creatorId=${group.creatorId}, _creatorId=$_creatorId, _currentUserId=$_currentUserId, _isCreator=$_isCreator');
           });
         }
       } catch (e) {
-        print("Error fetching chat details: $e");
+        print("Error fetching group details: $e");
       }
     }
 
@@ -493,8 +524,322 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     }
   }
 
+  void _showGroupMembers() async {
+    final groupService = GroupService();
+    
+    try {
+      final chat = await _chatService.getChatById(widget.chatId);
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: AppColors.background,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Thành viên nhóm (${chat.participantDetails?.length ?? 0})',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: chat.participantDetails?.length ?? 0,
+                  itemBuilder: (context, index) {
+                    final user = chat.participantDetails![index];
+                    final isCurrentUser = user.id == _currentUserId;
+                    final isCreatorMember = user.id == _creatorId;
+                    
+                    return ListTile(
+                      leading: UserAvatar(
+                        imagePath: user.avatarUrl,
+                        name: user.fullName,
+                        size: 40,
+                      ),
+                      title: Row(
+                        children: [
+                          Text(
+                            user.fullName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          if (isCreatorMember) ...[
+                            SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Admin',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      subtitle: Text(
+                        user.email,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      // Nút xóa thành viên (chỉ creator thấy, không xóa được chính mình hoặc creator khác)
+                      trailing: (_isCreator && !isCurrentUser && !isCreatorMember)
+                          ? IconButton(
+                              icon: Icon(Icons.remove_circle_outline, color: Colors.red),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text('Xóa thành viên'),
+                                    content: Text('Bạn có chắc muốn xóa ${user.fullName} khỏi nhóm?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Hủy')),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: Text('Xóa', style: TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  try {
+                                    await groupService.removeMember(widget.chatId, user.id);
+                                    Navigator.pop(sheetContext);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(this.context).showSnackBar(
+                                        SnackBar(content: Text('Đã xóa ${user.fullName}'), backgroundColor: Colors.green),
+                                      );
+                                      _showGroupMembers(); // Refresh list
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(this.context).showSnackBar(
+                                        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                            )
+                          : null,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể tải thành viên: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDissolveGroupConfirm() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Giải tán nhóm'),
+        content: Text(
+          'Bạn có chắc muốn giải tán nhóm "${widget.name}"?\n\n'
+          'Tất cả tin nhắn và dữ liệu nhóm sẽ bị xóa vĩnh viễn. '
+          'Hành động này không thể hoàn tác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Giải tán', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        final groupService = GroupService();
+        final success = await groupService.dissolveGroup(widget.chatId);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã giải tán nhóm'), backgroundColor: Colors.green),
+          );
+          // Quay về màn hình trước
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  void _showAddMemberDialog() async {
+    // Import FriendService to get friends list
+    final friendService = FriendService();
+    final groupService = GroupService();
+
+    try {
+      final friends = await friendService.getFriends();
+      final chat = await _chatService.getChatById(widget.chatId);
+      
+      // Filter out users who are already members
+      final existingMemberIds = chat.participants.toSet();
+      final availableFriends = friends.where((f) => !existingMemberIds.contains(f.id)).toList();
+
+      if (!mounted) return;
+
+      if (availableFriends.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tất cả bạn bè đã là thành viên nhóm'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: AppColors.background,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Thêm thành viên',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: availableFriends.length,
+                  itemBuilder: (context, index) {
+                    final friend = availableFriends[index];
+                    return ListTile(
+                      leading: UserAvatar(
+                        imagePath: friend.avatarUrl,
+                        name: friend.fullName,
+                        size: 40,
+                      ),
+                      title: Text(
+                        friend.fullName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        friend.email,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.person_add, color: AppColors.primary),
+                        onPressed: () async {
+                          try {
+                            final success = await groupService.addMember(widget.chatId, friend.id);
+                            Navigator.pop(context);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(success ? 'Đã thêm ${friend.fullName}' : 'Không thể thêm thành viên'),
+                                  backgroundColor: success ? Colors.green : Colors.red,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            Navigator.pop(context);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Lỗi: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể tải danh sách: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Lưu reference socket service để sử dụng trong dispose()
+    _socketService ??= ref.read(socketServiceProvider);
+    
     // Listen for incoming messages reactively
     ref.listen(socketMessageStreamProvider, (previous, next) {
       next.whenData(_handleSocketMessage);
@@ -565,6 +910,13 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                                 ? _isMine(_messages[messageIndex - 1].senderId) 
                                 : !isMine;
                             final bool showAvatar = !isMine && (messageIndex == 0 || prevIsMine != isMine);
+                            
+                            // Kiểm tra xem tin nhắn trước đó có phải từ cùng người gửi không
+                            final bool prevSameSender = messageIndex > 0 
+                                ? _messages[messageIndex - 1].senderId == message.senderId
+                                : false;
+                            // Hiển thị tên người gửi nếu là group chat và là tin đầu tiên trong chuỗi
+                            final bool showSenderName = widget.isGroup && !isMine && !prevSameSender;
 
                             return MessageBubble(
                               id: message.id,
@@ -577,6 +929,8 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                               mediaUrl: message.mediaUrl,
                               reactions: message.reactions,
                               onReaction: (emoji) => _sendReaction(message.id, emoji),
+                              senderName: message.senderName ?? _participantNames[message.senderId],
+                              showSenderName: showSenderName,
                             );
                           },
                         ),
@@ -736,7 +1090,6 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
           icon: Icon(Icons.videocam_outlined, color: AppColors.textPrimary),
           onPressed: () {
             if (widget.isGroup) {
-              // Group call
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -748,7 +1101,6 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                 ),
               );
             } else if (_targetUserId != null && _targetUserId!.isNotEmpty) {
-              // Direct call
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -762,20 +1114,71 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
             }
           },
         ),
-        IconButton(
-          icon: Icon(Icons.info_outline, color: AppColors.textPrimary),
-          onPressed: () {
-            // TODO: Chat info
-          },
-        ),
+        if (widget.isGroup)
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: AppColors.textPrimary),
+            onSelected: (value) {
+              switch (value) {
+                case 'view_members':
+                  _showGroupMembers();
+                  break;
+                case 'add_member':
+                  _showAddMemberDialog();
+                  break;
+                case 'dissolve_group':
+                  _showDissolveGroupConfirm();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'view_members',
+                child: Row(
+                  children: [
+                    Icon(Icons.people_outline, color: AppColors.textPrimary),
+                    SizedBox(width: 12),
+                    Text('Xem thành viên'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'add_member',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_add_outlined, color: AppColors.textPrimary),
+                    SizedBox(width: 12),
+                    Text('Thêm thành viên'),
+                  ],
+                ),
+              ),
+              // Chỉ creator mới thấy option giải tán nhóm
+              if (_isCreator)
+                PopupMenuItem(
+                  value: 'dissolve_group',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_forever, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text('Giải tán nhóm', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+            ],
+          )
+        else
+          IconButton(
+            icon: Icon(Icons.info_outline, color: AppColors.textPrimary),
+            onPressed: () {
+            },
+          ),
       ],
     );
   }
 
   @override
   void dispose() {
-    // Leave room when closing chat
-    ref.read(socketServiceProvider).leaveRoom(widget.chatId);
+    _socketService?.leaveRoom(widget.chatId);
+    
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();

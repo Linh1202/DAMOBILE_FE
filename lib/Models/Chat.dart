@@ -13,6 +13,9 @@ class Chat {
   final DateTime updatedAt;
   final String? creatorId;
   final String? description;
+  final DateTime? deletedAt;
+
+  bool get isDeleted => deletedAt != null;
 
   Chat({
     required this.id,
@@ -24,6 +27,7 @@ class Chat {
     required this.updatedAt,
     this.creatorId,
     this.description,
+    this.deletedAt,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -70,6 +74,7 @@ class Chat {
               : DateTime.now()),
       creatorId: json['creatorId']?.toString() ?? json['creator_id']?.toString(),
       description: json['description'],
+      deletedAt: json['deleted_at'] != null ? DateTime.tryParse(json['deleted_at']) : null,
     );
   }
 

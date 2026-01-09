@@ -21,7 +21,7 @@ class ChatRepository {
               return Chat.fromJson(json);
             }
             return Chat.fromJson(Map<String, dynamic>.from(json as Map));
-          }).toList();
+          }).where((chat) => !chat.isDeleted).toList(); // Lọc bỏ chats đã bị xóa
         }
       }
       return [];

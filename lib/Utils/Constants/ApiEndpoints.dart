@@ -33,6 +33,8 @@ class ApiEndpoints {
   static String groupById(String id) => '/group/$id';
   static String groupByCreator(String creatorId) => '/group/creator/$creatorId';
   static const String groupMember = '/group/member';
+  static const String groupDissolve = '/group/dissolve';
+  static const String groupLeave = '/group/leave';
 
   // WebSocket
   static const String ws = '/ws';

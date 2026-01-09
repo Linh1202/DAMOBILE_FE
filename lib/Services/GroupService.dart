@@ -31,4 +31,12 @@ class GroupService {
   Future<bool> removeMember(String groupId, String userId) async {
     return await _groupRepository.removeMember(groupId, userId);
   }
+
+  Future<bool> dissolveGroup(String groupId) async {
+    return await _groupRepository.dissolveGroup(groupId);
+  }
+
+  Future<bool> leaveGroup(String groupId) async {
+    return await _groupRepository.leaveGroup(groupId);
+  }
 }

@@ -20,6 +20,8 @@ class MessageBubble extends StatefulWidget {
   final String? mediaUrl;
   final List<Reaction> reactions;
   final Function(String emoji)? onReaction;
+  final String? senderName;
+  final bool showSenderName;
 
   const MessageBubble({
     Key? key,
@@ -33,6 +35,8 @@ class MessageBubble extends StatefulWidget {
     this.mediaUrl,
     this.reactions = const [],
     this.onReaction,
+    this.senderName,
+    this.showSenderName = false,
   }) : super(key: key);
 
   @override
@@ -244,6 +248,19 @@ class _MessageBubbleState extends State<MessageBubble> {
           Column(
             crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
+              // Hiển thị tên người gửi trong group chat
+              if (!isMine && widget.showSenderName && widget.senderName != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 4),
+                  child: Text(
+                    widget.senderName!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
               GestureDetector(
                 onLongPress: () => _showReactionPicker(context),
                 child: Container(
