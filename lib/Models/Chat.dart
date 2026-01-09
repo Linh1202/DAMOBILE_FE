@@ -9,7 +9,7 @@ class Chat {
   final String? name;
   final List<String> participants;
   final List<User>? participantDetails;
-  final Message? lastMessage;
+  final String? lastMessage;
   final DateTime updatedAt;
   final String? creatorId;
   final String? description;
@@ -64,9 +64,7 @@ class Chat {
       name: json['name'],
       participants: parseParticipants(json['participants']),
       participantDetails: parseParticipantDetails(json['participant_details']),
-      lastMessage: (json['last_message'] != null && json['last_message'] is Map)
-          ? Message.fromJson(json['last_message'])
-          : null,
+      lastMessage: json['last_message']?.toString(),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : (json['updatedAt'] != null 
