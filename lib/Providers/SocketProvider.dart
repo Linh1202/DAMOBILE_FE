@@ -11,6 +11,8 @@ final socketConnectedProvider = StateProvider<bool>((ref) {
   return SocketService.instance.isConnected;
 });
 
+final activeChatIdProvider = StateProvider<String?>((ref) => null);
+
 final userOnlineStatusProvider = StateNotifierProvider<UserOnlineNotifier, Map<String, bool>>((ref) {
   return UserOnlineNotifier();
 });

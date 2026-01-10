@@ -19,6 +19,7 @@ class MessageBubble extends StatefulWidget {
   final bool showAvatar;
   final String? mediaUrl;
   final List<Reaction> reactions;
+  final Map<String, int> reactionCounts;
   final Function(String emoji)? onReaction;
   final String? senderName;
   final bool showSenderName;
@@ -34,6 +35,7 @@ class MessageBubble extends StatefulWidget {
     this.showAvatar = true,
     this.mediaUrl,
     this.reactions = const [],
+    this.reactionCounts = const {},
     this.onReaction,
     this.senderName,
     this.showSenderName = false,
@@ -181,6 +183,8 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   void _showReactionPicker(BuildContext context) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    
     final List<String> defaultEmojis = EmojiService.getDefaultReactions();
     
     showDialog(
@@ -421,15 +425,19 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   Widget _buildReactionPill() {
-    // Nhóm các reaction theo emoji và đếm số lượng
-    final Map<String, int> emojiCounts = {};
-    for (var r in widget.reactions) {
-      emojiCounts[r.emoji] = (emojiCounts[r.emoji] ?? 0) + 1;
+    Map<String, int> counts = widget.reactionCounts;
+
+    // Fallback: Calculate counts from reactions list if reactionCounts is empty
+    if (counts.isEmpty && widget.reactions.isNotEmpty) {
+      counts = {};
+      for (var r in widget.reactions) {
+        counts[r.emoji] = (counts[r.emoji] ?? 0) + 1;
+      }
     }
 
     // Lấy tối đa 3 emoji phổ biến nhất để hiển thị
-    final topEmojis = emojiCounts.keys.take(3).toList();
-    final totalCount = widget.reactions.length;
+    final topEmojis = counts.keys.take(3).toList();
+    final totalCount = counts.values.fold(0, (sum, count) => sum + count);
 
     return GestureDetector(
       onTap: () => _showReactionPicker(context),

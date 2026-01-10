@@ -7,6 +7,8 @@ import 'package:doanmobile/Views/Authentication/ResetPasswordView.dart';
 import 'package:doanmobile/Views/Authentication/SuccessView.dart';
 import 'package:doanmobile/Views/Main/HomeView.dart';
 import 'package:doanmobile/Services/AuthStorage.dart';
+import 'package:doanmobile/Services/LocalNotificationService.dart';
+import 'package:doanmobile/Services/AppBackgroundService.dart';
 import 'Utils/AppGlobals.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -14,6 +16,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize notifications
+  await LocalNotificationService().init();
+
+  // Initialize background service
+  await AppBackgroundService().initializeService();
 
   const envFile = String.fromEnvironment('ENV_FILE', defaultValue: '.env');
   try {

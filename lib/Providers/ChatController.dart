@@ -234,6 +234,7 @@ class ChatController extends StateNotifier<ChatState> {
     final userId = payload['user_id']?.toString();
     final emoji = payload['emoji']?.toString();
     final action = payload['action']?.toString();
+    final reactionCountsData = payload['reaction_counts'] as Map<String, dynamic>?;
 
     if (messageId == null || userId == null || emoji == null || action == null) return;
 
@@ -258,6 +259,15 @@ class ChatController extends StateNotifier<ChatState> {
         break;
     }
 
+    // Parse reaction counts if provided
+    Map<String, int> updatedCounts = msg.reactionCounts;
+    if (reactionCountsData != null) {
+      updatedCounts = {};
+      reactionCountsData.forEach((key, value) {
+        updatedCounts[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+      });
+    }
+
     final updatedMessage = Message(
       id: msg.id,
       chatId: msg.chatId,
@@ -270,6 +280,7 @@ class ChatController extends StateNotifier<ChatState> {
       senderName: msg.senderName,
       senderAvatarUrl: msg.senderAvatarUrl,
       reactions: updatedReactions,
+      reactionCounts: updatedCounts,
       chatName: msg.chatName,
     );
 

@@ -100,6 +100,7 @@ class ChatMessageList extends StatelessWidget {
           showAvatar: showAvatar,
           mediaUrl: message.mediaUrl,
           reactions: message.reactions,
+          reactionCounts: message.reactionCounts,
           onReaction: (emoji) => onReaction(message.id, emoji),
           senderName: message.senderName ?? chatState.participantNames[message.senderId],
           showSenderName: showSenderName,

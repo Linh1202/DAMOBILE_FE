@@ -48,10 +48,20 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         _getNotifier().toggleEmoji(false);
       }
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(activeChatIdProvider.notifier).state = widget.chatId;
+    });
   }
 
   @override
   void dispose() {
+    Future.microtask(() {
+      if (ref.read(activeChatIdProvider) == widget.chatId) {
+        ref.read(activeChatIdProvider.notifier).state = null;
+      }
+    });
+
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();

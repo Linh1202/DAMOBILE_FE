@@ -13,6 +13,7 @@ class Message {
   final String? senderName;
   final String? senderAvatarUrl;
   final List<Reaction> reactions;
+  final Map<String, int> reactionCounts;
   final String? chatName;
 
   Message({
@@ -27,6 +28,7 @@ class Message {
     this.senderName,
     this.senderAvatarUrl,
     this.reactions = const [],
+    this.reactionCounts = const {},
     this.chatName,
   });
 
@@ -39,6 +41,13 @@ class Message {
     final reactions = reactionsData
         .map((r) => Reaction.fromJson(r as Map<String, dynamic>))
         .toList();
+
+    final Map<String, int> reactionCounts = {};
+    if (data['reaction_counts'] != null) {
+      (data['reaction_counts'] as Map).forEach((key, value) {
+        reactionCounts[key.toString()] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+      });
+    }
     
     return Message(
       id: data['_id']?.toString() ?? data['id']?.toString() ?? '',
@@ -56,6 +65,7 @@ class Message {
       senderName: data['sender_name'] ?? data['sender']?['username'],
       senderAvatarUrl: data['sender_avatar_url'] ?? data['sender']?['avatar_url'],
       reactions: reactions,
+      reactionCounts: reactionCounts,
       chatName: data['chat_name'],
     );
   }
@@ -71,6 +81,7 @@ class Message {
       'created_at': createdAt.toIso8601String(),
       'is_edited': isEdited,
       'reactions': reactions.map((r) => r.toJson()).toList(),
+      'reaction_counts': reactionCounts,
       'chat_name': chatName,
     };
   }

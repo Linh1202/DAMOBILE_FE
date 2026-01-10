@@ -13,6 +13,7 @@ class ChatActionSheets {
     required Function(ImageSource) onPickImage,
     required VoidCallback onPickFile,
   }) {
+    FocusManager.instance.primaryFocus?.unfocus();
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.background,
@@ -68,6 +69,7 @@ class ChatActionSheets {
     required String? creatorId,
     required Function(String memberId, String memberName) onRemoveMember,
   }) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final chatService = ChatService();
     
     try {
@@ -187,6 +189,7 @@ class ChatActionSheets {
     required String chatId,
     required Function(String friendId, String friendName) onAddMember,
   }) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     try {
       final friends = await FriendService().getFriends();
       final chat = await ChatService().getChatById(chatId);
@@ -286,6 +289,7 @@ class ChatActionSheets {
 
   /// Shows a confirmation dialog for dissolving a group
   static Future<bool?> showDissolveConfirm(BuildContext context, String groupName) {
+    FocusManager.instance.primaryFocus?.unfocus();
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

@@ -6,6 +6,8 @@ import 'package:doanmobile/Providers/SocketProvider.dart';
 import 'package:doanmobile/Providers/CallProvider.dart';
 import 'package:doanmobile/Services/SocketService.dart';
 import 'package:doanmobile/Services/WebRTCService.dart';
+import 'package:doanmobile/Services/LocalNotificationService.dart';
+import 'package:doanmobile/Services/AppBackgroundService.dart';
 import 'package:doanmobile/Views/Main/CallView.dart';
 import 'package:doanmobile/Views/Friends/FriendsView.dart';
 import 'package:doanmobile/Views/Settings/SettingsView.dart';
@@ -159,6 +161,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
 
   Future<void> clickLogout() async {
     ref.read(socketServiceProvider).close();
+    AppBackgroundService().stopService();
     await AuthStorage.deleteToken();
     await AuthStorage.deleteUser();
     if (mounted) {
@@ -198,13 +201,40 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
       }
     });
 
-    // Listen for new notifications via WebSocket to auto-update badge
+    // Listen for new notifications via WebSocket to auto-update badge and show local notifications
     ref.listen(socketMessageStreamProvider, (previous, next) {
-      next.whenData((message) {
+      next.whenData((message) async {
         final typeValue = message.type.value;
+        print('🔔 HomeView: Received socket message type=$typeValue');
+        
         if (typeValue == 'FRIEND_REQUEST' || typeValue == 'NOTIFICATION' || typeValue == 'NEW_MESSAGE') {
           // Reload notification count when new notification arrives
           _loadNotificationCount();
+        }
+
+        // Show local notification for new chat messages
+        if (message.type == MessageType.chatMessage) {
+          final activeChatId = ref.read(activeChatIdProvider);
+          final user = await AuthStorage.readUser();
+          final currentUserId = user?['id']?.toString() ?? user?['_id']?.toString() ?? "";
+          
+          print('🔔 HomeView: Message in room=${message.roomId}, activeChatId=$activeChatId, senderId=${message.senderId}, currentUserId=$currentUserId');
+
+          // Only show if:
+          // 1. Not from current user
+          // 2. Not in active chat room
+          if (message.senderId != currentUserId && message.roomId != activeChatId) {
+            print('🔔 HomeView: Showing local notification');
+            LocalNotificationService().showNotification(
+              title: message.senderName ?? message.chatName ?? "Tin nhắn mới",
+              body: (message.content != null && message.content!.isNotEmpty) 
+                  ? message.content! 
+                  : (message.payload is Map && message.payload['media_url'] != null ? "[Hình ảnh/Tệp tin]" : "Bạn có tin nhắn mới"),
+              payload: message.roomId,
+            );
+          } else {
+            print('🔔 HomeView: Notification suppressed (isMine=${message.senderId == currentUserId}, isActive=${message.roomId == activeChatId})');
+          }
         }
       });
     });
