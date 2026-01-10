@@ -99,12 +99,10 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     final chatState = ref.watch(chatControllerProvider((chatId: widget.chatId, isGroup: widget.isGroup)));
     final chatNotifier = _getNotifier();
 
-    // Listen for incoming socket messages
     ref.listen(socketMessageStreamProvider, (previous, next) {
       next.whenData(chatNotifier.handleSocketMessage);
     });
 
-    // Auto scroll to bottom when messages change
     ref.listen(chatControllerProvider((chatId: widget.chatId, isGroup: widget.isGroup)).select((s) => s.messages.length), (prev, next) {
       _scrollToBottom();
     });
@@ -175,68 +173,87 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
                   ],
                 ),
               ),
-            ChatInputBar(
-              controller: _messageController,
-              focusNode: _focusNode,
-              onSend: () {
-                chatNotifier.sendMessage(_messageController.text);
-                _messageController.clear();
-                _scrollToBottom();
-              },
-              onChanged: (_) => chatNotifier.sendTyping(),
-              onAttachment: () => ChatActionSheets.showMediaPicker(
-                context: context,
-                onPickImage: _pickAndSendImage,
-                onPickFile: _pickAndSendFile,
-              ),
-              onEmoji: () {
-                final show = !chatState.showEmoji;
-                chatNotifier.toggleEmoji(show);
-                if (show) {
-                  _focusNode.unfocus();
-                } else {
-                  _focusNode.requestFocus();
-                }
-              },
-              onVoice: () {},
-            ),
-            if (chatState.showEmoji)
-              SizedBox(
-                height: 250,
-                child: EmojiPicker(
-                  onEmojiSelected: (_, emoji) {
-                    _messageController.text += emoji.emoji;
-                    chatNotifier.sendTyping();
-                    EmojiService.addRecentEmoji(emoji.emoji);
-                  },
-                  onBackspacePressed: () {
-                    final text = _messageController.text;
-                    if (text.isNotEmpty) {
-                      _messageController.text = text.characters.skipLast(1).toString();
-                    }
-                  },
-                  config: Config(
-                    height: 256,
-                    checkPlatformCompatibility: true,
-                    emojiViewConfig: EmojiViewConfig(
-                      columns: 7,
-                      emojiSizeMax: 32 * (Platform.isIOS ? 1.30 : 1.0),
-                      backgroundColor: AppColors.background,
-                      noRecents: const Text(
-                        'Chưa có emoji gần đây',
-                        style: TextStyle(fontSize: 20, color: Colors.black26),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    categoryViewConfig: CategoryViewConfig(
-                      indicatorColor: AppColors.primary,
-                      iconColorSelected: AppColors.primary,
-                      backspaceColor: AppColors.primary,
-                      backgroundColor: AppColors.background,
-                    ),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
                   ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    ChatInputBar(
+                      controller: _messageController,
+                      focusNode: _focusNode,
+                      onSend: () {
+                        chatNotifier.sendMessage(_messageController.text);
+                        _messageController.clear();
+                        _scrollToBottom();
+                      },
+                      onChanged: (_) => chatNotifier.sendTyping(),
+                      onAttachment: () => ChatActionSheets.showMediaPicker(
+                        context: context,
+                        onPickImage: _pickAndSendImage,
+                        onPickFile: _pickAndSendFile,
+                      ),
+                      onEmoji: () {
+                        final show = !chatState.showEmoji;
+                        chatNotifier.toggleEmoji(show);
+                        if (show) {
+                          _focusNode.unfocus();
+                        } else {
+                          _focusNode.requestFocus();
+                        }
+                      },
+                      onVoice: () {},
+                    ),
+                    if (chatState.showEmoji)
+                      SizedBox(
+                        height: 250,
+                        child: EmojiPicker(
+                          onEmojiSelected: (_, emoji) {
+                            _messageController.text += emoji.emoji;
+                            chatNotifier.sendTyping();
+                            EmojiService.addRecentEmoji(emoji.emoji);
+                          },
+                          onBackspacePressed: () {
+                            final text = _messageController.text;
+                            if (text.isNotEmpty) {
+                              _messageController.text = text.characters.skipLast(1).toString();
+                            }
+                          },
+                          config: Config(
+                            height: 256,
+                            checkPlatformCompatibility: true,
+                            emojiViewConfig: EmojiViewConfig(
+                              columns: 7,
+                              emojiSizeMax: 32 * (Platform.isIOS ? 1.30 : 1.0),
+                              backgroundColor: AppColors.background,
+                              noRecents: const Text(
+                                'Chưa có emoji gần đây',
+                                style: TextStyle(fontSize: 20, color: Colors.black26),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            categoryViewConfig: CategoryViewConfig(
+                              indicatorColor: AppColors.primary,
+                              iconColorSelected: AppColors.primary,
+                              backspaceColor: AppColors.primary,
+                              backgroundColor: AppColors.background,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -291,7 +308,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   void _addMember(String userId, String name) async {
     try {
       final success = await _getNotifier().addMember(userId);
-      if (mounted) {
+      if (mounted) }{
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(success ? 'Đã thêm $name' : 'Không thể thêm thành viên'),
@@ -331,7 +348,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar}(
             SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
           );
         }

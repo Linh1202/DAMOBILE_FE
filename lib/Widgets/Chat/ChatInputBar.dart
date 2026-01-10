@@ -25,20 +25,9 @@ class ChatInputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
+      color: AppColors.background,
+      child: Row(
+        children: [
             IconButton(
               icon: Icon(Icons.emoji_emotions_outlined, color: AppColors.textSecondary),
               onPressed: onEmoji,
@@ -108,7 +97,6 @@ class ChatInputBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

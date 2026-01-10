@@ -79,7 +79,7 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   void _openFullScreenImage(BuildContext context) {
     if (widget.mediaUrl == null) return;
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -184,9 +184,9 @@ class _MessageBubbleState extends State<MessageBubble> {
 
   void _showReactionPicker(BuildContext context) {
     FocusManager.instance.primaryFocus?.unfocus();
-    
+
     final List<String> defaultEmojis = EmojiService.getDefaultReactions();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -336,8 +336,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                                             width: 200,
                                             padding: const EdgeInsets.all(16),
                                             decoration: BoxDecoration(
-                                              color: isMine 
-                                                  ? Colors.white.withOpacity(0.2) 
+                                              color: isMine
+                                                  ? Colors.white.withOpacity(0.2)
                                                   : AppColors.background,
                                               borderRadius: BorderRadius.circular(12),
                                             ),
@@ -350,12 +350,12 @@ class _MessageBubbleState extends State<MessageBubble> {
                                                 ),
                                                 const SizedBox(height: 8),
                                                 Text(
-                                                  _isDownloading 
+                                                  _isDownloading
                                                       ? 'Đang tải ${(_downloadProgress * 100).toInt()}%'
                                                       : 'Nhấn để tải về',
                                                   style: TextStyle(
                                                     fontSize: 12,
-                                                    color: isMine 
+                                                    color: isMine
                                                         ? Colors.white.withOpacity(0.8)
                                                         : AppColors.textSecondary,
                                                   ),
