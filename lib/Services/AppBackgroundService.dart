@@ -73,7 +73,6 @@ class AppBackgroundService {
     // We need to initialize notification service again in this isolate
     await notificationService.init();
 
-    print('Background Service: Initializing Socket Connection...');
     await socketService.connect();
 
     // Listen to messages in background
@@ -84,8 +83,6 @@ class AppBackgroundService {
 
         // Only show notification if it's not our own message
         if (message.senderId != currentUserId) {
-          print('Background Service: New message received, showing notification');
-          
           notificationService.showNotification(
             title: message.senderName ?? message.chatName ?? "Tin nhắn mới",
             body: (message.content != null && message.content!.isNotEmpty)
@@ -110,7 +107,6 @@ class AppBackgroundService {
     // Handle reconnects
     Timer.periodic(const Duration(seconds: 30), (timer) async {
       if (!socketService.isConnected) {
-        print('Background Service: Attempting to reconnect socket...');
         await socketService.connect();
       }
     });

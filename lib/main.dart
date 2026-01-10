@@ -27,7 +27,6 @@ Future<void> main() async {
   try {
     await dotenv.load(fileName: envFile);
   } catch (e) {
-    print("Error loading $envFile: $e");
     if (envFile != '.env') {
       await dotenv.load(fileName: '.env');
     }

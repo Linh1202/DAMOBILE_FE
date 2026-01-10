@@ -232,7 +232,7 @@ class WebRTCService {
       _isRemoteDescriptionSet = true;
       await _processRemoteIceCandidates();
     } catch (e) {
-      print("WebRTC: handleAnswer failed: $e");
+      //
     }
   }
 
@@ -251,21 +251,19 @@ class WebRTCService {
     }
 
     try {
-      print("WebRTC: Adding remote ICE candidate");
       await _peerConnection!.addCandidate(candidate);
     } catch (e) {
-      print("WebRTC: handleIceCandidate failed: $e");
+      //
     }
   }
 
   Future<void> _processRemoteIceCandidates() async {
     if (_peerConnection == null || _remoteIceCandidatesBuffer.isEmpty) return;
-    print("WebRTC: Processing ${_remoteIceCandidatesBuffer.length} buffered ICE candidates");
     for (var candidate in List.from(_remoteIceCandidatesBuffer)) {
       try {
         await _peerConnection!.addCandidate(candidate);
       } catch (e) {
-        print("WebRTC: Error adding buffered candidate: $e");
+        //
       }
     }
     _remoteIceCandidatesBuffer.clear();
@@ -273,7 +271,6 @@ class WebRTCService {
 
   Future<void> endCall([String? targetUserId]) async {
     try {
-      print("WebRTC: Terminating call");
       if (targetUserId != null) {
         await _sendSignalingMessage(
           type: SignalingType.end,
@@ -318,7 +315,7 @@ class WebRTCService {
 
       onCallEnd?.call();
     } catch (e) {
-      print("WebRTC: endCall error: $e");
+      //
     }
   }
 

@@ -23,7 +23,6 @@ class MediaService {
         throw Exception(response['message'] ?? 'Upload failed');
       }
     } catch (e) {
-      print('MediaService: Upload error: $e');
       rethrow;
     }
   }

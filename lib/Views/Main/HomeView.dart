@@ -55,7 +55,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
         });
       }
     } catch (e) {
-      print('Error loading notification count: $e');
+      //
     }
   }
 
@@ -69,7 +69,7 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
         });
       }
     } catch (e) {
-      print('Error loading friend request count: $e');
+      //
     }
   }
 
@@ -205,7 +205,6 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
     ref.listen(socketMessageStreamProvider, (previous, next) {
       next.whenData((message) async {
         final typeValue = message.type.value;
-        print('🔔 HomeView: Received socket message type=$typeValue');
         
         if (typeValue == 'FRIEND_REQUEST' || typeValue == 'NOTIFICATION' || typeValue == 'NEW_MESSAGE') {
           // Reload notification count when new notification arrives
@@ -218,13 +217,10 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
           final user = await AuthStorage.readUser();
           final currentUserId = user?['id']?.toString() ?? user?['_id']?.toString() ?? "";
           
-          print('🔔 HomeView: Message in room=${message.roomId}, activeChatId=$activeChatId, senderId=${message.senderId}, currentUserId=$currentUserId');
-
           // Only show if:
           // 1. Not from current user
           // 2. Not in active chat room
           if (message.senderId != currentUserId && message.roomId != activeChatId) {
-            print('🔔 HomeView: Showing local notification');
             LocalNotificationService().showNotification(
               title: message.senderName ?? message.chatName ?? "Tin nhắn mới",
               body: (message.content != null && message.content!.isNotEmpty) 
@@ -232,8 +228,6 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
                   : (message.payload is Map && message.payload['media_url'] != null ? "[Hình ảnh/Tệp tin]" : "Bạn có tin nhắn mới"),
               payload: message.roomId,
             );
-          } else {
-            print('🔔 HomeView: Notification suppressed (isMine=${message.senderId == currentUserId}, isActive=${message.roomId == activeChatId})');
           }
         }
       });

@@ -75,7 +75,6 @@ class CallNotifier extends StateNotifier<CallState> {
           return;
         }
 
-        print("CallProvider: Received incoming call offer from ${message.senderName ?? message.senderId}");
         state = CallState(
           status: CallStatus.ringing,
           callerId: message.senderId,
@@ -87,17 +86,14 @@ class CallNotifier extends StateNotifier<CallState> {
         break;
 
       case SignalingType.answer:
-        print("CallProvider: Received Answer from peer");
         WebRTCService.instance.handleAnswer(innerPayload);
         break;
 
       case SignalingType.iceCandidate:
-        print("CallProvider: Received ICE Candidate from peer");
         WebRTCService.instance.handleIceCandidate(innerPayload);
         break;
 
       case SignalingType.end:
-        print("CallProvider: Call ended by remote peer");
         _resetState();
         break;
 

@@ -27,23 +27,18 @@ class LocalNotificationService {
       settings,
       onDidReceiveNotificationResponse: _onDidReceiveNotificationResponse,
     );
-    print('🔔 LocalNotificationService: Initialized success = $initialized');
 
     // Create a default channel for Android (required for Android 8.0+)
     await _createDefaultChannel();
 
     // Request permissions for Android 13+
-    print('🔔 LocalNotificationService: Requesting permissions for Android 13+...');
     final granted = await _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
-    print('🔔 LocalNotificationService: Permission granted = $granted');
   }
 
   /// Create default notification channel for Android
   Future<void> _createDefaultChannel() async {
-    print('🔔 LocalNotificationService: Creating Android channels...');
-    
     const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
       'chat_messages',
       'Tin nhắn',
@@ -65,15 +60,12 @@ class LocalNotificationService {
 
     await androidPlugin?.createNotificationChannel(chatChannel);
     await androidPlugin?.createNotificationChannel(backgroundChannel);
-    
-    print('🔔 LocalNotificationService: Android channels created');
   }
 
   /// Handle notification tap events
   void _onDidReceiveNotificationResponse(NotificationResponse response) {
     final String? payload = response.payload;
     if (payload != null) {
-      print('Notification payload: $payload');
       // Logic to navigate to specific chat room could go here
     }
   }
@@ -85,7 +77,6 @@ class LocalNotificationService {
     required String body,
     String? payload,
   }) async {
-    print('🔔 LocalNotificationService: Showing notification id=$id, title=$title');
     try {
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
         'chat_messages',
@@ -115,9 +106,8 @@ class LocalNotificationService {
         details,
         payload: payload,
       );
-      print('🔔 LocalNotificationService: Notification shown successfully');
     } catch (e) {
-      print('🔔 LocalNotificationService ERROR: Failed to show notification: $e');
+      //
     }
   }
 

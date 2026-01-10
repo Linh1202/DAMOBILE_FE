@@ -57,7 +57,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
         });
       }
     } catch (e) {
-      print('Error marking as read: $e');
+      //
     }
   }
 
@@ -202,7 +202,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
             );
           }
         } catch (e) {
-          print('Error navigating to chat: $e');
+          //
         }
       }
     }

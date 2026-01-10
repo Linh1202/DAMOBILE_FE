@@ -14,7 +14,6 @@ class EmojiService {
       final List<dynamic> list = jsonDecode(jsonStr);
       return list.map((e) => e.toString()).toList();
     } catch (e) {
-      print('Error reading recent emojis: $e');
       return [];
     }
   }
@@ -33,7 +32,7 @@ class EmojiService {
       
       await _storage.write(key: _kRecentEmojis, value: jsonEncode(recent));
     } catch (e) {
-      print('Error saving recent emoji: $e');
+      //
     }
   }
 
@@ -45,7 +44,7 @@ class EmojiService {
         await _storage.write(key: _kRecentEmojis, value: jsonEncode(recent));
       }
     } catch (e) {
-      print('Error removing recent emoji: $e');
+      //
     }
   }
 
@@ -53,7 +52,7 @@ class EmojiService {
     try {
       await _storage.delete(key: _kRecentEmojis);
     } catch (e) {
-      print('❌ Error clearing recent emojis: $e');
+      //
     }
   }
 

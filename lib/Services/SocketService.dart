@@ -72,13 +72,11 @@ class SocketService {
 
   Future<void> connect() async {
     if (_isConnected || _isConnecting) {
-      print('🔌 WS: Already connected or connecting, skip');
       return;
     }
     _isConnecting = true;
 
     final url = await _getWsUrl();
-    print("WebSocket: Connecting to $url...");
 
     try {
       _channel = IOWebSocketChannel.connect(
@@ -88,7 +86,6 @@ class SocketService {
 
       _channel!.ready.then((_) {
         if (!_isConnected) {
-          print("WebSocket: Connection established");
           _isConnected = true;
           _isConnecting = false;
           _retryCount = 0;
@@ -102,23 +99,18 @@ class SocketService {
 
       _subscription = _channel!.stream.listen(
         (message) {
-          print("WebSocket: Message received: $message");
           try {
             final decoded = jsonDecode(message);
-            print('📥 WS decoded: $decoded');
             if (decoded is Map<String, dynamic>) {
               final socketMsg = SocketMessage.fromJson(decoded);
-              print('📥 WS parsed: type=${socketMsg.type.value}, roomId=${socketMsg.roomId}');
               _messageController.add(socketMsg);
             } else if (decoded is List) {
-              print('📥 WS received HISTORY with ${decoded.length} messages');
               _messageController.add(SocketMessage(
                 type: MessageType.history,
                 payload: decoded,
               ));
             }
           } catch (e) {
-            print('❌ WS decode error: $e');
             _handleError("Lỗi giải mã tin nhắn: $e");
           }
         },
@@ -136,7 +128,6 @@ class SocketService {
   }
 
   void _handleConnectionClosed(String reason) {
-    print("WebSocket: Connection closed ($reason)");
     _isConnected = false;
     _isConnecting = false;
     _channel = null;
@@ -170,7 +161,6 @@ class SocketService {
     final delay = Duration(seconds: backoffDelays[_retryCount]);
     _retryCount++;
 
-    print("WebSocket: Scheduling reconnect in ${delay.inSeconds}s (attempt $_retryCount/$_maxRetries)");
     _reconnectTimer = Timer(delay, () {
       connect();
     });
@@ -183,36 +173,30 @@ class SocketService {
 
   Future<void> sendMessage(SocketMessage message) async {
     if (!_isConnected) {
-      print("WebSocket: Not connected. Attempting to connect before sending message...");
       await ensureConnected();
     }
 
     if (_channel != null && _isConnected) {
       try {
         final json = jsonEncode(message.toJson());
-        print('📤 WS sending: $json');
         _channel!.sink.add(json);
       } catch (e) {
         _handleError("Không thể gửi tin nhắn: $e");
       }
     } else {
-      print("WebSocket: Failed to send message - still not connected after retry.");
       _handleError("Không có kết nối WebSocket.");
     }
   }
 
   void joinRoom(String roomId) {
-    print('📍 WS joinRoom: $roomId');
     sendMessage(SocketMessage.createJoinRoom(roomId));
   }
 
   void leaveRoom(String roomId) {
-    print('📍 WS leaveRoom: $roomId');
     sendMessage(SocketMessage.createLeaveRoom(roomId));
   }
 
   void sendChatMessage(String roomId, String content, {String? mediaUrl}) {
-    print('💬 WS sendChatMessage: roomId=$roomId, content=$content, mediaUrl=$mediaUrl');
     sendMessage(SocketMessage.createChatMessage(
       roomId: roomId,
       content: content,
@@ -221,7 +205,6 @@ class SocketService {
   }
 
   void sendReaction(String roomId, String messageId, String emoji) {
-    print('👍 WS sendReaction: roomId=$roomId, messageId=$messageId, emoji=$emoji');
     sendMessage(SocketMessage.createReaction(
       roomId: roomId,
       messageId: messageId,
@@ -230,17 +213,14 @@ class SocketService {
   }
 
   void sendTyping(String roomId) {
-    print('✏️ WS sendTyping: roomId=$roomId');
     sendMessage(SocketMessage.createTyping(roomId));
   }
 
   void sendFriendRequest(String targetUserId) {
-    print('👥 WS sendFriendRequest: targetUserId=$targetUserId');
     sendMessage(SocketMessage.createFriendRequest(targetUserId));
   }
 
   void sendGroupInvite(String targetUserId, String inviteMessage) {
-    print('👫 WS sendGroupInvite: targetUserId=$targetUserId, message=$inviteMessage');
     sendMessage(SocketMessage.createGroupInvite(
       targetUserId: targetUserId,
       content: inviteMessage,
@@ -248,7 +228,6 @@ class SocketService {
   }
 
   void sendNotification({String? targetUserId, required String content}) {
-    print('🔔 WS sendNotification: targetUserId=$targetUserId, content=$content');
     sendMessage(SocketMessage.createNotification(
       targetUserId: targetUserId,
       content: content,
@@ -260,7 +239,6 @@ class SocketService {
     required SignalingType signalingType,
     dynamic signalingPayload,
   }) {
-    print('📞 WS sendDirectCall: targetUserId=$targetUserId, type=$signalingType');
     sendMessage(SocketMessage.createDirectCall(
       targetId: targetUserId,
       signalingType: signalingType,
@@ -273,7 +251,6 @@ class SocketService {
     required SignalingType signalingType,
     dynamic signalingPayload,
   }) {
-    print('📞 WS sendRoomCall: roomId=$roomId, type=$signalingType');
     sendMessage(SocketMessage.createRoomCall(
       roomId: roomId,
       signalingType: signalingType,
@@ -282,7 +259,6 @@ class SocketService {
   }
 
   void broadcastUserOnlineStatus(String userId, bool isOnline) {
-    print('🟢 WS broadcastUserOnlineStatus: userId=$userId, isOnline=$isOnline');
     final message = SocketMessage(
       type: MessageType.notification,
       content: isOnline ? 'online' : 'offline',
@@ -295,7 +271,6 @@ class SocketService {
   }
 
   void close() {
-    print('🔌 WS closing connection...');
     _cancelReconnectTimer();
     _subscription?.cancel();
     _subscription = null;

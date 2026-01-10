@@ -124,7 +124,7 @@ class ChatController extends StateNotifier<ChatState> {
         participantAvatars: participantAvatars,
       );
     } catch (e) {
-      print("Error fetching chat details: $e");
+      //
     }
 
     // Load creatorId if group
@@ -133,7 +133,7 @@ class ChatController extends StateNotifier<ChatState> {
         final group = await _groupService.getGroupById(chatId);
         state = state.copyWith(creatorId: group.creatorId);
       } catch (e) {
-        print("Error fetching group details: $e");
+        //
       }
     }
 

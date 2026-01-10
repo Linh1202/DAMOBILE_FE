@@ -9,14 +9,10 @@ class ChatRepository {
   Future<List<Chat>> getChats() async {
     try {
       final response = await _apiService.getWithAuth(ApiEndpoints.chat);
-      print('🔍 getChats response: $response');
       if (response['success'] == true && response['data'] != null) {
         final chatsData = response['data']['chats'];
-        print('🔍 chatsData type: ${chatsData.runtimeType}');
-        print('🔍 chatsData: $chatsData');
         if (chatsData is List) {
           return chatsData.map((json) {
-            print('🔍 chat item type: ${json.runtimeType}');
             if (json is Map<String, dynamic>) {
               return Chat.fromJson(json);
             }
@@ -26,8 +22,6 @@ class ChatRepository {
       }
       return [];
     } catch (e, stackTrace) {
-      print('❌ getChats error: $e');
-      print('❌ stackTrace: $stackTrace');
       throw Exception('Không thể tải danh sách cuộc trò chuyện: $e');
     }
   }
