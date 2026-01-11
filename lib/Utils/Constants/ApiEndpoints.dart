@@ -14,6 +14,7 @@ class ApiEndpoints {
   // Chats
   static const String chat = '/chat';
   static String chatById(String id) => '/chat/$id';
+  static String chatSearch(String query, String type) => '/chat/search?q=$query&type=$type';
 
   // Messages
   static String messagesByConversationId(String conversationId) => '/message/$conversationId';

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../Utils/Constants/AppColors.dart';
-import '../../Widgets/Avatars/UserAvatar.dart';
-import '../../Widgets/Friends/FriendListItem.dart';
 import '../../Widgets/Chat/ChatListItem.dart';
+import '../../Services/ChatService.dart';
+import '../../Services/AuthStorage.dart';
+import '../../Models/Chat.dart';
 import '../Chat/ChatDetailView.dart';
 
 class SearchView extends StatefulWidget {
@@ -14,33 +15,31 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
   late TabController _tabController;
   TextEditingController txtSearch = TextEditingController();
   
+  final ChatService _chatService = ChatService();
+  
   bool _isSearching = false;
+  bool _isLoading = false;
   String _searchQuery = "";
-
-  // Mock data - Người dùng
-  final List<Map<String, dynamic>> _users = [
-    {"id": "1", "name": "Minh Anh", "avatarUrl": "Assets/Images/anh1.png", "isOnline": true, "lastSeen": "Đang hoạt động"},
-    {"id": "2", "name": "Hương Giang", "avatarUrl": "Assets/Images/anh1.png", "isOnline": true, "lastSeen": "Đang hoạt động"},
-    {"id": "3", "name": "Đức Anh", "avatarUrl": "Assets/Images/anh1.png", "isOnline": false, "lastSeen": "2 giờ trước"},
-  ];
-
-  // Mock data - Nhóm chat
-  final List<Map<String, dynamic>> _groupChats = [
-    {"id": "chat_1", "name": "Minh Anh", "avatarUrl": "Assets/Images/anh1.png", "content": "Chiều nay đi cafe nhé!", "updatedAt": "", "type": "private"},
-    {"id": "chat_2", "name": "Team Dev Frontend", "avatarUrl": "Assets/Images/anh1.png", "content": "Đức Anh: Meeting lúc 2h nhé mọi người", "updatedAt": "", "type": "group"},
-    {"id": "chat_3", "name": "Hương Giang", "avatarUrl": "Assets/Images/anh1.png", "content": "Ok, hẹn gặp lại!", "updatedAt": "", "type": "private"},
-  ];
-
-  // Mock data - Tin nhắn (kết quả tìm kiếm trong nội dung tin nhắn)
-  final List<Map<String, dynamic>> _messages = [
-    {"id": "1", "senderName": "Minh Anh", "avatarUrl": "Assets/Images/anh1.png", "content": "Chiều nay đi cafe nhé!", "chatName": "Minh Anh"},
-    {"id": "2", "senderName": "Đức Anh", "avatarUrl": "Assets/Images/anh1.png", "content": "Meeting lúc 2h nhé mọi người", "chatName": "Team Dev Frontend"},
-  ];
+  String _currentUserId = "";
+  
+  List<Chat> _allChats = [];
+  List<Chat> _privateChats = [];
+  List<Chat> _groupChats = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthStorage.readUser();
+    if (mounted && user != null) {
+      setState(() {
+        _currentUserId = user['id']?.toString() ?? user['_id']?.toString() ?? '';
+      });
+    }
   }
 
   @override
@@ -50,33 +49,42 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  void _onSearch(String query) {
+  Future<void> _onSearch(String query) async {
     setState(() {
       _searchQuery = query;
       _isSearching = query.isNotEmpty;
     });
-    // TODO: Gọi API tìm kiếm
-  }
 
-  List<Map<String, dynamic>> get _filteredUsers {
-    if (_searchQuery.isEmpty) return [];
-    return _users.where((user) => 
-      user["name"].toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
-  }
+    if (query.isEmpty) {
+      setState(() {
+        _allChats = [];
+        _privateChats = [];
+        _groupChats = [];
+      });
+      return;
+    }
 
-  List<Map<String, dynamic>> get _filteredChats {
-    if (_searchQuery.isEmpty) return [];
-    return _groupChats.where((chat) => 
-      chat["name"].toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
-  }
+    if (query.length < 2) return;
 
-  List<Map<String, dynamic>> get _filteredMessages {
-    if (_searchQuery.isEmpty) return [];
-    return _messages.where((msg) => 
-      msg["content"].toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
+    setState(() => _isLoading = true);
+
+    try {
+      // Search all chats
+      final results = await _chatService.searchChats(query, type: 'all');
+      
+      if (mounted) {
+        setState(() {
+          _allChats = results;
+          _privateChats = results.where((c) => c.type == ChatType.private).toList();
+          _groupChats = results.where((c) => c.type == ChatType.group).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -98,7 +106,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
                   _buildAllTab(),
                   _buildPeopleTab(),
                   _buildGroupsTab(),
-                  _buildMessagesTab(),
                 ],
               ),
             ),
@@ -161,7 +168,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
           Tab(text: "Tất cả"),
           Tab(text: "Người"),
           Tab(text: "Nhóm"),
-          Tab(text: "Tin nhắn"),
         ],
       ),
     );
@@ -173,81 +179,91 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
       return _buildEmptyState("Nhập từ khóa để tìm kiếm");
     }
 
-    final users = _filteredUsers;
-    final chats = _filteredChats;
-    final messages = _filteredMessages;
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
 
-    if (users.isEmpty && chats.isEmpty && messages.isEmpty) {
+    if (_allChats.isEmpty) {
       return _buildEmptyState("Không tìm thấy kết quả");
     }
 
-    return ListView(
-      children: [
-        // Section Người dùng
-        if (users.isNotEmpty) ...[
-          _buildSectionHeader("Người dùng"),
-          ...users.map((user) => FriendListItem(
-            name: user["name"],
-            avatarUrl: user["avatarUrl"],
-            isOnline: user["isOnline"],
-            lastSeen: user["lastSeen"],
-            onTap: () {
-              // TODO: Mở profile người dùng
-            },
-          )),
-        ],
-        // Section Nhóm chat
-        if (chats.isNotEmpty) ...[
-          _buildSectionHeader("Nhóm chat"),
-          ...chats.map((chat) => ChatListItem(
-            name: chat["name"],
-            avatarUrl: chat["avatarUrl"],
-            content: chat["content"],
-            updatedAt: chat["updatedAt"],
-            unreadCount: 0,
-            isGroup: chat["type"] == "group",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatDetailView(
-                    chatId: chat["id"],
-                    name: chat["name"],
-                    avatarUrl: chat["avatarUrl"],
-                    isOnline: false,
-                    isGroup: chat["type"] == "group",
-                  ),
-                ),
-              );
-            },
-          )),
-        ],
-      ],
+    return ListView.builder(
+      itemCount: _allChats.length,
+      itemBuilder: (context, index) {
+        final chat = _allChats[index];
+        return _buildChatItem(chat);
+      },
     );
   }
 
-  /// Tab Người - Chỉ hiển thị người dùng
+  /// Build a chat item widget with correct name and avatar
+  Widget _buildChatItem(Chat chat) {
+    final isGroup = chat.type == ChatType.group;
+    String name;
+    String avatar;
+
+    if (isGroup) {
+      name = chat.name ?? "Nhóm";
+      avatar = "Assets/Images/anh1.png";
+    } else {
+      // For private chat, try to get the other user's info
+      if (chat.participantDetails != null && chat.participantDetails!.isNotEmpty) {
+        final otherUser = chat.participantDetails!.firstWhere(
+          (u) => u.id != _currentUserId,
+          orElse: () => chat.participantDetails!.first,
+        );
+        name = otherUser.fullName;
+        avatar = otherUser.avatarUrl ?? "Assets/Images/anh1.png";
+      } else {
+        // Fallback to chat.name which backend sets from username
+        name = chat.name ?? "Chat";
+        avatar = "Assets/Images/anh1.png";
+      }
+    }
+
+    return ChatListItem(
+      name: name,
+      avatarUrl: avatar,
+      content: chat.lastMessage ?? "",
+      updatedAt: "",
+      unreadCount: 0,
+      isGroup: isGroup,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatDetailView(
+              chatId: chat.id,
+              name: name,
+              avatarUrl: avatar,
+              isOnline: false,
+              isGroup: isGroup,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Tab Người - Chỉ hiển thị chat riêng tư (private)
   Widget _buildPeopleTab() {
     if (!_isSearching) {
       return _buildEmptyState("Nhập tên để tìm người dùng");
     }
 
-    final users = _filteredUsers;
-    if (users.isEmpty) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (_privateChats.isEmpty) {
       return _buildEmptyState("Không tìm thấy người dùng");
     }
 
-    return ListView.separated(
-      itemCount: users.length,
-      separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
+    return ListView.builder(
+      itemCount: _privateChats.length,
       itemBuilder: (context, index) {
-        final user = users[index];
-        return FriendListItem(
-          name: user["name"],
-          avatarUrl: user["avatarUrl"],
-          isOnline: user["isOnline"],
-          lastSeen: user["lastSeen"],
-        );
+        final chat = _privateChats[index];
+        return _buildChatItem(chat);
       },
     );
   }
@@ -258,106 +274,20 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
       return _buildEmptyState("Nhập tên để tìm nhóm");
     }
 
-    final chats = _filteredChats;
-    if (chats.isEmpty) {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (_groupChats.isEmpty) {
       return _buildEmptyState("Không tìm thấy nhóm");
     }
 
-    return ListView.separated(
-      itemCount: chats.length,
-      separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
+    return ListView.builder(
+      itemCount: _groupChats.length,
       itemBuilder: (context, index) {
-        final chat = chats[index];
-        return ChatListItem(
-          name: chat["name"],
-          avatarUrl: chat["avatarUrl"],
-          content: chat["content"],
-          updatedAt: chat["updatedAt"],
-          unreadCount: 0,
-          isGroup: chat["type"] == "group",
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatDetailView(
-                  chatId: chat["id"],
-                  name: chat["name"],
-                  avatarUrl: chat["avatarUrl"],
-                  isOnline: false,
-                  isGroup: chat["type"] == "group",
-                ),
-              ),
-            );
-          },
-        );
+        final chat = _groupChats[index];
+        return _buildChatItem(chat);
       },
-    );
-  }
-
-  /// Tab Tin nhắn - Tìm trong nội dung tin nhắn
-  Widget _buildMessagesTab() {
-    if (!_isSearching) {
-      return _buildEmptyState("Nhập nội dung để tìm tin nhắn");
-    }
-
-    final messages = _filteredMessages;
-    if (messages.isEmpty) {
-      return _buildEmptyState("Không tìm thấy tin nhắn");
-    }
-
-    return ListView.separated(
-      itemCount: messages.length,
-      separatorBuilder: (context, index) => Divider(height: 1, indent: 80),
-      itemBuilder: (context, index) {
-        final msg = messages[index];
-        return ListTile(
-          leading: UserAvatar(
-            imagePath: msg["avatarUrl"],
-            name: msg["senderName"],
-            size: 50,
-          ),
-          title: Text(
-            msg["chatName"],
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          subtitle: RichText(
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            text: TextSpan(
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              children: [
-                TextSpan(
-                  text: "${msg["senderName"]}: ",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                TextSpan(text: msg["content"]),
-              ],
-            ),
-          ),
-          onTap: () {
-            // TODO: Mở chat và highlight tin nhắn
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.inputBackground,
-      width: double.infinity,
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
-        ),
-      ),
     );
   }
 

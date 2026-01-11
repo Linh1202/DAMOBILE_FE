@@ -37,4 +37,9 @@ class ChatService {
   Future<List<Chat>> getGroupsByCreator(String creatorId) async {
     return await _chatRepository.getGroupsByCreator(creatorId);
   }
+
+  /// Search chats by name or participant username
+  Future<List<Chat>> searchChats(String query, {String type = 'all'}) async {
+    return await _chatRepository.searchChats(query, type: type);
+  }
 }

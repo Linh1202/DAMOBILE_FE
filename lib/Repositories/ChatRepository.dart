@@ -115,4 +115,29 @@ class ChatRepository {
       throw Exception('Không thể tải danh sách nhóm: $e');
     }
   }
+
+  /// Search chats by name or participant username
+  /// [query] - Search keyword
+  /// [type] - Filter: "all", "private", or "group"
+  Future<List<Chat>> searchChats(String query, {String type = 'all'}) async {
+    try {
+      final response = await _apiService.getWithAuth(
+        ApiEndpoints.chatSearch(query, type),
+      );
+      if (response['success'] == true && response['data'] != null) {
+        final chatsData = response['data']['chats'];
+        if (chatsData is List) {
+          return chatsData.map((json) {
+            if (json is Map<String, dynamic>) {
+              return Chat.fromJson(json);
+            }
+            return Chat.fromJson(Map<String, dynamic>.from(json as Map));
+          }).where((chat) => !chat.isDeleted).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      throw Exception('Không thể tìm kiếm: $e');
+    }
+  }
 }
