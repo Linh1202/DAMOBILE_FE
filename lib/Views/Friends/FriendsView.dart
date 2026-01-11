@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../Utils/Constants/AppColors.dart';
+import '../../Utils/Constants/AppEnums.dart';
 import '../../Utils/Handlers/DialogHandler.dart';
 import '../../Widgets/Friends/FriendListItem.dart';
 import '../../Widgets/Friends/FriendRequestItem.dart';
@@ -12,17 +14,18 @@ import '../../Models/FriendRequest.dart' as model;
 import '../../Models/Chat.dart';
 import '../../Views/Chat/ChatDetailView.dart';
 import '../../Services/AuthStorage.dart';
+import '../../Providers/SocketProvider.dart';
 
-class FriendsView extends StatefulWidget {
+class FriendsView extends ConsumerStatefulWidget {
   final VoidCallback? onRequestCountChanged;
   
   const FriendsView({Key? key, this.onRequestCountChanged}) : super(key: key);
   
   @override
-  _FriendsViewState createState() => _FriendsViewState();
+  ConsumerState<FriendsView> createState() => _FriendsViewState();
 }
 
-class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStateMixin {
+class _FriendsViewState extends ConsumerState<FriendsView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   TextEditingController txtSearch = TextEditingController();
 
@@ -46,6 +49,37 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     _tabController = TabController(length: 3, vsync: this);
     _loadCurrentUser();
     _loadData();
+    _setupSocketListener();
+  }
+
+  void _setupSocketListener() {
+    // Listen for new friend requests via WebSocket
+    ref.listenManual(socketMessageStreamProvider, (previous, next) {
+      next.whenData((message) {
+        if (message.type == MessageType.friendRequest && message.payload != null) {
+          _handleNewFriendRequest(message.payload);
+        }
+      });
+    });
+  }
+
+  void _handleNewFriendRequest(dynamic payload) {
+    if (payload is Map<String, dynamic>) {
+      try {
+        final newRequest = model.FriendRequest.fromJson(payload);
+        // Check if request already exists
+        final exists = _friendRequests.any((req) => req.id == newRequest.id);
+        if (!exists && mounted) {
+          setState(() {
+            _friendRequests.insert(0, newRequest);
+          });
+          widget.onRequestCountChanged?.call();
+        }
+      } catch (e) {
+        // Fallback: reload from server if parsing fails
+        _loadFriendRequests();
+      }
+    }
   }
 
   Future<void> _loadCurrentUser() async {

@@ -308,7 +308,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
   void _addMember(String userId, String name) async {
     try {
       final success = await _getNotifier().addMember(userId);
-      if (mounted) }{
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(success ? 'Đã thêm $name' : 'Không thể thêm thành viên'),
@@ -348,7 +348,7 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar}(
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
           );
         }

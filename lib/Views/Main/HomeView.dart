@@ -209,6 +209,11 @@ class _HomeViewState extends ConsumerState<HomeView> with WidgetsBindingObserver
         if (typeValue == 'FRIEND_REQUEST' || typeValue == 'NOTIFICATION' || typeValue == 'NEW_MESSAGE') {
           // Reload notification count when new notification arrives
           _loadNotificationCount();
+          
+          // Reload friend request count when new friend request arrives
+          if (typeValue == 'FRIEND_REQUEST') {
+            _loadFriendRequestCount();
+          }
         }
 
         // Show local notification for new chat messages

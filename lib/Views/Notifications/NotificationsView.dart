@@ -109,6 +109,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
         backgroundColor: AppColors.background,
         elevation: 0,
         centerTitle: false,
+        automaticallyImplyLeading: false,
         title: Text(
           "Thông báo",
           style: TextStyle(

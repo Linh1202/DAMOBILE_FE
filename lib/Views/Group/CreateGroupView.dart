@@ -183,44 +183,13 @@ class _CreateGroupViewState extends State<CreateGroupView> {
             padding: EdgeInsets.all(16),
             child: Row(
               children: [
-                // Avatar nhóm với nút camera
-                Stack(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: AppColors.inputBackground,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.group,
-                        color: AppColors.iconGrey,
-                        size: 32,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.inputBackground,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.background,
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: AppColors.iconGrey,
-                          size: 14,
-                        ),
-                      ),
-                    ),
-                  ],
+                // Avatar nhóm giống trang home
+                UserAvatar(
+                  imagePath: "Assets/Images/anh1.png",
+                  name: txtGroupName.text.isEmpty ? "G" : txtGroupName.text,
+                  size: 64,
+                  isGroup: true,
+                  showOnlineIndicator: false,
                 ),
                 SizedBox(width: 16),
                 // Input tên nhóm

@@ -87,7 +87,8 @@ class Message {
   }
 
   String get formattedTime {
-    return "${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}";
+    final localTime = createdAt.toLocal();
+    return "${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}";
   }
 
   bool get hasMedia => mediaUrl != null && mediaUrl!.isNotEmpty;
