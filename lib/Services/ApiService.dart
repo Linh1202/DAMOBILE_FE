@@ -164,6 +164,12 @@ class ApiService {
   Future<dynamic> postMultipartWithAuth(String endpoint, String filePath, {String fieldName = 'file'}) async {
     String url = '$_baseUrl$endpoint';
     try {
+      final file = File(filePath);
+      final fileSize = await file.length();
+      if (fileSize > 10 * 1024 * 1024) {
+        throw Exception("Kích thước tệp không được vượt quá 10MB");
+      }
+
       final token = await AuthStorage.readToken();
       var request = http.MultipartRequest('POST', Uri.parse(url));
       
