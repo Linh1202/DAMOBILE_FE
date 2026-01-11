@@ -14,7 +14,6 @@ class VerifyCodeView extends StatefulWidget {
 }
 
 class _VerifyCodeViewState extends State<VerifyCodeView> {
-  // BE API yêu cầu OTP 6 số (validate:"required,len=6")
   TextEditingController txtCode1 = TextEditingController();
   TextEditingController txtCode2 = TextEditingController();
   TextEditingController txtCode3 = TextEditingController();
@@ -47,11 +46,9 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Nhận email từ màn hình ForgotPassword
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null && args['email'] != null) {
       email = args['email'];
-      // Mask email: user@gmail.com -> us***@gmail.com
       maskedEmail = _maskEmail(email);
     }
   }
@@ -124,7 +121,6 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
       return;
     }
 
-    // Chuyển sang màn hình đặt lại mật khẩu, truyền email và OTP
     Navigator.pushNamed(
       context,
       '/reset-password',
@@ -222,23 +218,17 @@ class _VerifyCodeViewState extends State<VerifyCodeView> {
                 ),
               ),
               SizedBox(height: 40),
-              // 6 ô OTP - Responsive layout
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 10),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(child: CodeInputBox(controller: txtCode1, focusNode: focusNode1, nextFocusNode: focusNode2, width: 48, height: 56)),
-                    SizedBox(width: 6),
-                    Expanded(child: CodeInputBox(controller: txtCode2, focusNode: focusNode2, nextFocusNode: focusNode3, width: 48, height: 56)),
-                    SizedBox(width: 6),
-                    Expanded(child: CodeInputBox(controller: txtCode3, focusNode: focusNode3, nextFocusNode: focusNode4, width: 48, height: 56)),
-                    SizedBox(width: 6),
-                    Expanded(child: CodeInputBox(controller: txtCode4, focusNode: focusNode4, nextFocusNode: focusNode5, width: 48, height: 56)),
-                    SizedBox(width: 6),
-                    Expanded(child: CodeInputBox(controller: txtCode5, focusNode: focusNode5, nextFocusNode: focusNode6, width: 48, height: 56)),
-                    SizedBox(width: 6),
-                    Expanded(child: CodeInputBox(controller: txtCode6, focusNode: focusNode6, width: 48, height: 56)),
+                    CodeInputBox(controller: txtCode1, focusNode: focusNode1, nextFocusNode: focusNode2, width: 50, height: 70),
+                    CodeInputBox(controller: txtCode2, focusNode: focusNode2, nextFocusNode: focusNode3, previousFocusNode: focusNode1, width: 50, height: 70),
+                    CodeInputBox(controller: txtCode3, focusNode: focusNode3, nextFocusNode: focusNode4, previousFocusNode: focusNode2, width: 50, height: 70),
+                    CodeInputBox(controller: txtCode4, focusNode: focusNode4, nextFocusNode: focusNode5, previousFocusNode: focusNode3, width: 50, height: 70),
+                    CodeInputBox(controller: txtCode5, focusNode: focusNode5, nextFocusNode: focusNode6, previousFocusNode: focusNode4, width: 50, height: 70),
+                    CodeInputBox(controller: txtCode6, focusNode: focusNode6, previousFocusNode: focusNode5, width: 50, height: 70),
                   ],
                 ),
               ),

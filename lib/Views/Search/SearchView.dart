@@ -173,7 +173,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
     );
   }
 
-  /// Tab Tất cả - Hiển thị tổng hợp kết quả
   Widget _buildAllTab() {
     if (!_isSearching) {
       return _buildEmptyState("Nhập từ khóa để tìm kiếm");
@@ -196,7 +195,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
     );
   }
 
-  /// Build a chat item widget with correct name and avatar
   Widget _buildChatItem(Chat chat) {
     final isGroup = chat.type == ChatType.group;
     String name;
@@ -206,7 +204,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
       name = chat.name ?? "Nhóm";
       avatar = "Assets/Images/anh1.png";
     } else {
-      // For private chat, try to get the other user's info
       if (chat.participantDetails != null && chat.participantDetails!.isNotEmpty) {
         final otherUser = chat.participantDetails!.firstWhere(
           (u) => u.id != _currentUserId,
@@ -215,7 +212,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
         name = otherUser.fullName;
         avatar = otherUser.avatarUrl ?? "Assets/Images/anh1.png";
       } else {
-        // Fallback to chat.name which backend sets from username
         name = chat.name ?? "Chat";
         avatar = "Assets/Images/anh1.png";
       }
@@ -245,7 +241,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
     );
   }
 
-  /// Tab Người - Chỉ hiển thị chat riêng tư (private)
   Widget _buildPeopleTab() {
     if (!_isSearching) {
       return _buildEmptyState("Nhập tên để tìm người dùng");
@@ -268,7 +263,6 @@ class _SearchViewState extends State<SearchView> with SingleTickerProviderStateM
     );
   }
 
-  /// Tab Nhóm - Chỉ hiển thị nhóm chat
   Widget _buildGroupsTab() {
     if (!_isSearching) {
       return _buildEmptyState("Nhập tên để tìm nhóm");
