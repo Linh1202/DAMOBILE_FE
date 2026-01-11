@@ -10,6 +10,7 @@ import '../../Utils/Constants/ApiEndpoints.dart';
 import '../../Models/User.dart';
 import '../../Widgets/Avatars/UserAvatar.dart';
 import 'ProfileView.dart';
+import 'ChangePasswordView.dart';
 
 class SettingsView extends StatefulWidget {
   @override
@@ -54,9 +55,9 @@ class _SettingsViewState extends State<SettingsView> {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image == null) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đang tải ảnh lên...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Đang tải ảnh lên...')));
 
       final response = await _apiService.postMultipartWithAuth(
         ApiEndpoints.uploadMedia,
@@ -65,11 +66,11 @@ class _SettingsViewState extends State<SettingsView> {
 
       if (response['success'] == true && response['data'] != null) {
         final avatarUrl = response['data']['url'];
-        
+
         await _userService.updateProfile(avatarUrl: avatarUrl);
-        
+
         await _loadProfile();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Cập nhật ảnh đại diện thành công')),
@@ -78,9 +79,9 @@ class _SettingsViewState extends State<SettingsView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi cập nhật ảnh: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi khi cập nhật ảnh: $e')));
       }
     }
   }
@@ -90,7 +91,7 @@ class _SettingsViewState extends State<SettingsView> {
       context,
       MaterialPageRoute(builder: (context) => ProfileView()),
     );
-    
+
     if (result == true) {
       _loadProfile();
     }
@@ -109,10 +110,7 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              "Đăng xuất",
-              style: TextStyle(color: AppColors.error),
-            ),
+            child: Text("Đăng xuất", style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -121,7 +119,9 @@ class _SettingsViewState extends State<SettingsView> {
     if (confirmed == true) {
       await AuthStorage.deleteToken();
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (route) => false);
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/welcome', (route) => false);
       }
     }
   }
@@ -134,9 +134,9 @@ class _SettingsViewState extends State<SettingsView> {
         children: [
           // Profile Section
           _buildProfileSection(),
-          
+
           SizedBox(height: 16),
-          
+
           // Tài khoản Section
           _buildSectionHeader("Tài khoản"),
           _buildSettingItem(
@@ -151,9 +151,21 @@ class _SettingsViewState extends State<SettingsView> {
               // TODO: Mở màn hình bảo mật
             },
           ),
-          
+          _buildSettingItem(
+            icon: Icons.password_outlined,
+            title: "Đổi mật khẩu",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ChangePasswordView(),
+                ),
+              );
+            },
+          ),
+
           SizedBox(height: 16),
-          
+
           // Tùy chọn Section
           _buildSectionHeader("Tùy chọn"),
           _buildSettingItem(
@@ -181,18 +193,15 @@ class _SettingsViewState extends State<SettingsView> {
             title: "Ngôn ngữ",
             trailing: Text(
               currentLanguage,
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: AppColors.primary, fontSize: 14),
             ),
             onTap: () {
               // TODO: Mở màn hình chọn ngôn ngữ
             },
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Hỗ trợ Section
           _buildSectionHeader("Hỗ trợ"),
           _buildSettingItem(
@@ -202,9 +211,9 @@ class _SettingsViewState extends State<SettingsView> {
               // TODO: Mở màn hình trợ giúp
             },
           ),
-          
+
           SizedBox(height: 32),
-          
+
           // Nút Đăng xuất
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -231,7 +240,7 @@ class _SettingsViewState extends State<SettingsView> {
               ),
             ),
           ),
-          
+
           SizedBox(height: 32),
         ],
       ),
@@ -254,7 +263,11 @@ class _SettingsViewState extends State<SettingsView> {
             children: [
               UserAvatar(
                 imagePath: _currentUser?.avatarUrl,
-                name: _currentUser?.fullName ?? (AppGlobals.userName.isNotEmpty ? AppGlobals.userName : "Bạn"),
+                name:
+                    _currentUser?.fullName ??
+                    (AppGlobals.userName.isNotEmpty
+                        ? AppGlobals.userName
+                        : "Bạn"),
                 size: 64,
                 isOnline: true,
               ),
@@ -269,10 +282,7 @@ class _SettingsViewState extends State<SettingsView> {
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.background,
-                        width: 2,
-                      ),
+                      border: Border.all(color: AppColors.background, width: 2),
                     ),
                     child: Icon(
                       Icons.camera_alt,
@@ -291,7 +301,10 @@ class _SettingsViewState extends State<SettingsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _currentUser?.fullName ?? (AppGlobals.userName.isNotEmpty ? AppGlobals.userName : "Bạn"),
+                  _currentUser?.fullName ??
+                      (AppGlobals.userName.isNotEmpty
+                          ? AppGlobals.userName
+                          : "Bạn"),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -344,14 +357,13 @@ class _SettingsViewState extends State<SettingsView> {
       leading: Icon(icon, color: AppColors.textSecondary),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 15,
-          color: AppColors.textPrimary,
-        ),
+        style: TextStyle(fontSize: 15, color: AppColors.textPrimary),
       ),
-      trailing: trailing ?? (onTap != null
-          ? Icon(Icons.chevron_right, color: AppColors.textSecondary)
-          : null),
+      trailing:
+          trailing ??
+          (onTap != null
+              ? Icon(Icons.chevron_right, color: AppColors.textSecondary)
+              : null),
     );
   }
 }
