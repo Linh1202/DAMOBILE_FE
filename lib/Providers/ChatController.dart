@@ -152,6 +152,38 @@ class ChatController extends StateNotifier<ChatState> {
     _ref.read(socketServiceProvider).joinRoom(chatId);
   }
 
+  /// Refresh group info (creatorId, participants) from database
+  Future<void> refreshGroupInfo() async {
+    if (!isGroup) return;
+    
+    try {
+      // Refresh creatorId
+      final group = await _groupService.getGroupById(chatId);
+      
+      // Refresh participant details
+      final chat = await _chatService.getChatById(chatId);
+      Map<String, String> participantNames = {};
+      Map<String, String> participantAvatars = {};
+      
+      if (chat.participantDetails != null) {
+        for (final participant in chat.participantDetails!) {
+          participantNames[participant.id] = participant.fullName;
+          if (participant.avatarUrl != null && participant.avatarUrl!.isNotEmpty) {
+            participantAvatars[participant.id] = participant.avatarUrl!;
+          }
+        }
+      }
+      
+      state = state.copyWith(
+        creatorId: group.creatorId,
+        participantNames: participantNames,
+        participantAvatars: participantAvatars,
+      );
+    } catch (e) {
+      // Ignore errors
+    }
+  }
+
   void handleSocketMessage(SocketMessage message) {
     if (message.isOnline != null && message.senderId != null) {
       if (!isGroup && message.senderId == state.targetUserId) {
@@ -378,6 +410,14 @@ class ChatController extends StateNotifier<ChatState> {
   Future<bool> dissolveGroup() async {
     try {
       return await _groupService.dissolveGroup(chatId);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> leaveGroup() async {
+    try {
+      return await _groupService.leaveGroup(chatId);
     } catch (e) {
       rethrow;
     }

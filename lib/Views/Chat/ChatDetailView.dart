@@ -116,18 +116,23 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         isGroup: widget.isGroup,
         state: chatState,
         onVideoCall: () => _handleVideoCall(chatState.targetUserId),
-        onViewMembers: () => ChatActionSheets.showGroupMembers(
-          context: context,
-          chatId: widget.chatId,
-          currentUserId: chatState.currentUserId,
-          creatorId: chatState.creatorId,
-          onRemoveMember: _removeMember,
-        ),
+        onViewMembers: () async {
+          await _getNotifier().refreshGroupInfo();
+          if (!mounted) return;
+          ChatActionSheets.showGroupMembers(
+            context: context,
+            chatId: widget.chatId,
+            currentUserId: ref.read(chatControllerProvider((chatId: widget.chatId, isGroup: widget.isGroup))).currentUserId,
+            creatorId: ref.read(chatControllerProvider((chatId: widget.chatId, isGroup: widget.isGroup))).creatorId,
+            onRemoveMember: _removeMember,
+          );
+        },
         onAddMember: () => ChatActionSheets.showAddMemberDialog(
           context: context,
           chatId: widget.chatId,
           onAddMember: _addMember,
         ),
+        onLeaveGroup: _leaveGroup,
         onDissolveGroup: _dissolveGroup,
         onInfo: () {},
       ),
@@ -260,8 +265,6 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
     );
   }
 
-  // --- Logic Handlers ---
-
   Future<void> _pickAndSendImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
@@ -364,6 +367,27 @@ class _ChatDetailViewState extends ConsumerState<ChatDetailView> {
         if (success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã giải tán nhóm'), backgroundColor: Colors.green),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  void _leaveGroup() async {
+    final confirm = await ChatActionSheets.showLeaveConfirm(context, widget.name);
+    if (confirm == true) {
+      try {
+        final success = await _getNotifier().leaveGroup();
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã rời khỏi nhóm'), backgroundColor: Colors.green),
           );
           Navigator.pop(context);
         }

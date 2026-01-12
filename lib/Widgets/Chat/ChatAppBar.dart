@@ -14,6 +14,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onViewMembers;
   final VoidCallback? onAddMember;
   final VoidCallback? onDissolveGroup;
+  final VoidCallback? onLeaveGroup;
   final VoidCallback? onInfo;
 
   const ChatAppBar({
@@ -27,6 +28,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onViewMembers,
     this.onAddMember,
     this.onDissolveGroup,
+    this.onLeaveGroup,
     this.onInfo,
   }) : super(key: key);
 
@@ -98,6 +100,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             onSelected: (value) {
               if (value == 'view_members') onViewMembers?.call();
               else if (value == 'add_member') onAddMember?.call();
+              else if (value == 'leave_group') onLeaveGroup?.call();
               else if (value == 'dissolve_group') onDissolveGroup?.call();
             },
             itemBuilder: (context) => [
@@ -118,6 +121,16 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     Icon(Icons.person_add_outlined, color: AppColors.textPrimary),
                     const SizedBox(width: 12),
                     const Text('Thêm thành viên'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'leave_group',
+                child: Row(
+                  children: [
+                    const Icon(Icons.exit_to_app, color: Colors.orange),
+                    const SizedBox(width: 12),
+                    const Text('Rời nhóm', style: TextStyle(color: Colors.orange)),
                   ],
                 ),
               ),

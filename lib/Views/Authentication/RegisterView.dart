@@ -93,7 +93,7 @@ class _RegisterViewState extends State<RegisterView> {
           padding: EdgeInsets.symmetric(horizontal: 25),
           child: Form(
             key: formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
+            autovalidateMode: AutovalidateMode.disabled,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

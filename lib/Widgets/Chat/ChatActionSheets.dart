@@ -305,4 +305,23 @@ class ChatActionSheets {
       ),
     );
   }
+
+  /// Shows a confirmation dialog for leaving a group
+  static Future<bool?> showLeaveConfirm(BuildContext context, String groupName) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rời nhóm'),
+        content: Text('Bạn có chắc muốn rời khỏi nhóm "$groupName"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Rời nhóm', style: TextStyle(color: Colors.orange)),
+          ),
+        ],
+      ),
+    );
+  }
 }
